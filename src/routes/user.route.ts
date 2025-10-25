@@ -1,6 +1,6 @@
 import express from 'express';
 // importamos los controladores
-import { getUserId, getUsers, updateUser } from '../controllers/user.controller';
+import { getUserId, getUsers, updateUserPassword, updateUserRole } from '../controllers/user.controller';
 
 // inicializamos el router
 const router = express.Router();
@@ -9,9 +9,10 @@ const router = express.Router();
 // Ruta de usuario para obtener información del usuario especificado por ID
 router.get('/users/:id', getUserId);
 // Ruta de usuario para obtener todos los usuarios
-router.get('/users', getUsers) // getUsers --- TO BE IMPLEMENTED ---
-// Ruta para actualizar la información del usuario especificado por ID
-router.put('/users/:id', updateUser) // updateUser --- TO BE IMPLEMENTED ---
+router.get('/users', getUsers)
+// Rutas para actualizar la información del usuario especificado por ID
+router.patch('/users/:id', updateUserPassword)
+router.patch('/users/id', updateUserRole)
 
 
 export default router;

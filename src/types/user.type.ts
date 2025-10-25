@@ -3,7 +3,7 @@ export interface User {
     nombre_completo: string;
     correo_electronico: string;
     password: string;
-    rol_id: number; // puedes referenciar otra interface si quieres
+    rol_id: number;
 }
 
 export interface TipoRol {
