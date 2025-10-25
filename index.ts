@@ -16,12 +16,18 @@ app.get('/', (req, res) => {
 // rutas de usuario
 app.use('/api', userRoutes);
 
+
+
 const startServer = async () => {
     try {
-        await db; // asegurarse de que la DB esté conectada
+        // Verificamos la conexión a la base de datos antes de iniciar el servidor
+        const conn = await db.getConnection();
+        // Iniciamos el servidor
         app.listen(port, () => {
             console.log(`Servidor corriendo en http://localhost:${port}`);
         });
+        // Liberamos la conexión a la base de datos
+        conn.release();
     } catch (error) {
         console.error('Error al conectar a la base de datos:', error);
         process.exit(1); // salir si DB falla
