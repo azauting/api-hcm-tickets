@@ -1,7 +1,5 @@
 import type { Request, Response } from 'express';
-// importamos las respuestas de error y éxito para user
 import { InternalServerError, UserRetrievedOk, UserNotFound } from './apiResponse';
-// importamos el servicio de user para obtener la información del usuario especificado por ID
 import { getUser } from '../services/user.service';
 
 
@@ -9,15 +7,15 @@ import { getUser } from '../services/user.service';
 export const getUserId = async (req: Request, res: Response) => {
     // obtenemos el ID del usuario desde los parámetros de la solicitud
     const userId = parseInt(req.params.id!);
+    // intentamos obtener la información del usuario desde el servicio
     try {
-        // llamamos al servicio para obtener la información del usuario
         const user = await getUser(userId);
         // si no se encuentra el usuario, devolvemos una respuesta de usuario no encontrado
         if (user === undefined) {
             return res.json({ response: UserNotFound });
         }
         // si se encuentra el usuario, devolvemos una respuesta de éxito con la información del usuario
-        return res.json({ response: UserRetrievedOk, data: user });
+        return res.json({ response: UserRetrievedOk, data: user }); 
     } catch (error) {
         return res.json({ response: InternalServerError });
     }
@@ -29,6 +27,10 @@ export const getUsers = async (req: Request, res: Response) => {
 }
 
 // Controlador para manejar la actualización de la información del usuario por ID
-export const updateUser = async (req: Request, res: Response) => {
-    res.send('PROXIMAMENTE: Actualizar usuario por ID');
+export const updateUserPassword = async (req: Request, res: Response) => {
+    res.send('PROXIMAMENTE: Actualizar contraseña del usuario por ID');
+}
+
+export const updateUserRole = async (req: Request, res: Response) => {
+    res.send('PROXIMAMENTE: Actualizar rol del usuario por ID');
 }
