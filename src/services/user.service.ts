@@ -1,5 +1,4 @@
 import logger from 'pino'
-import { UserNotFound } from '../controllers/apiResponse'
 import type { User } from '../types/user.type'
 import pool from '../../db.config'
 
@@ -17,7 +16,7 @@ export const getUser = async (userId: number): Promise<User> => {
     log.info(`Obteniendo usuario con ID: ${userId}`);
     // Obtenemos el usuario desde la base de datos
     const user = await getUserFromDB(userId);
-    // Si no se encuentra el usuario, lanzamos un error el el sistema de logs
+    // Si no se encuentra el usuario, lanzamos un error en el sistema de logs
     if (!user) {
         log.error(`Usuario con ID ${userId} no encontrado`);
     } else {
