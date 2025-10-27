@@ -1,9 +1,9 @@
 import type { Request, Response } from 'express';
-import { InternalServerError, UserRetrievedOk, UserNotFound } from './apiResponse';
-import { getUser } from '../services/user.service';
+import { InternalServerError, UserRetrievedOk, UserNotFound, UsersRetrievedOk } from './apiResponse';
+import { getAllUsers, getUser } from '../services/user.service';
 
 
-// Controlador para manejar la obtención de información del usuario por ID
+// Controller para manejar la obtención de un usuario por ID
 export const getUserId = async (req: Request, res: Response) => {
     // obtenemos el ID del usuario desde los parámetros de la solicitud
     const userId = parseInt(req.params.id!);
@@ -15,15 +15,25 @@ export const getUserId = async (req: Request, res: Response) => {
             return res.json({ response: UserNotFound });
         }
         // si se encuentra el usuario, devolvemos una respuesta de éxito con la información del usuario
-        return res.json({ response: UserRetrievedOk, data: user }); 
+        return res.json({ response: UserRetrievedOk, data: user });
     } catch (error) {
         return res.json({ response: InternalServerError });
     }
 }
-
-// Controllar para manejar la obtención de todos los usuarios
+// Controller para manejar la obtención de todos los usuarios
 export const getUsers = async (req: Request, res: Response) => {
-    res.send('PROXIMAMENTE: Obtener todos los usuarios');
+    const users = await getAllUsers();
+
+    try {
+        //validamos si hay usuarios
+        if (!users || users.length === 0) {
+            return res.json({ response: UserNotFound });
+        }
+        //si se encuentra usuarios, devolvemos una respuesta de éxito con la información de los usuarios
+        return res.json({ response: UsersRetrievedOk, Data: users })
+    } catch (error) {
+        return res.json({ response: InternalServerError })
+    }
 }
 
 // Controlador para manejar la actualización de la información del usuario por ID
