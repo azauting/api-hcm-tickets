@@ -49,4 +49,20 @@ export const InternalServerError = {
     detail: 'Ocurrió un error inesperado en el servidor' 
 };
 
+
+//404 - usarios no encontrados
+export const UsersNotFound = { 
+    statusCode: 404, 
+    message: 'Usuarios no encontrados', 
+    detail: 'No se encontraron usuarios en la base de datos' 
+};
+
+//200 - usuarios obtenidos con éxito
+export const UsersRetrievedOk = {
+    statusCode: 200,
+    message: 'Usuarios obtenidos con éxito',
+    detail: 'La información de los usuarios ha sido recuperada correctamente'
+}
+
+
 // Otras respuestas estándar de la API pueden ser agregadas aquí
