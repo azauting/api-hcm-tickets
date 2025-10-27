@@ -1,9 +1,18 @@
 import logger from 'pino'
 import type { User } from '../types/user.type'
 import pool from '../../db.config'
+import { useActionState } from 'react';
 
-// Servicio para obtener un usuario por ID
-export const getUser = async (userId: number): Promise<User | undefined> => {
+const getUserFromDB = async (userId: number): Promise<User | undefined> => {
+    // Realizamos la consulta a la base de datos para obtener el usuario por ID
+    const [rows] = await pool.query('SELECT * FROM usuario WHERE usuario_id = ?', [userId]);
+    // Devolvemos el usuario encontrado
+    return (rows as User[])[0];
+}
+
+//servicio para obtener un usuario por ID
+export const getUser = async (userId: number): Promise<User> => {
+    // Inicializamos el logger con el ID del usuario
     const log = logger().child({ userId });
     log.info(`Obteniendo usuario con ID: ${userId}`);
 
@@ -21,8 +30,10 @@ export const getUser = async (userId: number): Promise<User | undefined> => {
 };
 
 // Servicio para obtener todos los usuarios
-export const getAllUsers = async (): Promise<User[]> => {
+export const getAllUsers = async (): Promise<User> => {
+    // Inicializamos el logger para la acción de obtención de todos los usuarios
     const log = logger().child({ action: 'getAllUsers' });
+
     log.info('Obteniendo todos los usuarios desde la base de datos');
 
     const [result] = await pool.query('SELECT * FROM usuario');
