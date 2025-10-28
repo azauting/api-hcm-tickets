@@ -6,13 +6,11 @@ import { getUserId, getUsers, updateUserPassword, updateUserRole } from '../cont
 const router = express.Router();
 
 
-// Ruta de usuario para obtener información del usuario especificado por ID
-router.get('/users/:id', getUserId);
-// Ruta de usuario para obtener todos los usuarios
-router.get('/users', getUsers)
-// Rutas para actualizar la información del usuario especificado por ID
-router.patch('/users/:id', updateUserPassword)
-router.patch('/users/id', updateUserRole)
+// Ruta de usuario p
+router.get('/users/:id', getUserId); // listo
+router.get('/users', getUsers) // list
+router.patch('/users/:id', updateUserPassword) // pendiente
+router.patch('/users/id', updateUserRole) // pendiente
 
 
 export default router;

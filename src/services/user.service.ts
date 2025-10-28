@@ -19,12 +19,12 @@ export const getUser = async (userId: number): Promise<User> => {
     const [result] = await pool.query('SELECT * FROM usuario WHERE usuario_id = ?', [userId]);
     const users = result as User[];
     const user = users[0];
-
+    // Verificar si se encontró el usuario
     if (!user) {
         log.warn(`Usuario con ID ${userId} no encontrado`);
         return undefined;
     }
-
+    
     log.info(`Usuario con ID ${userId} obtenido con éxito`);
     return user;
 };

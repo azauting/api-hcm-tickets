@@ -10,18 +10,14 @@ import { getAllUsers, getUser } from '../services/user.service';
 // Controller: obtener usuario por ID
 export const getUserId = async (req: Request, res: Response) => {
     const userId = parseInt(req.params.id!, 10);
-
     if (Number.isNaN(userId)) {
-        return res.status(400).json({ response: 'InvalidUserId' });
+        return res.status(400).json({ response: 'InvalidUserId', });
     }
-
     try {
         const user = await getUser(userId);
-
         if (!user) {
             return res.status(404).json({ response: UserNotFound });
         }
-
         return res.status(200).json({
             response: UserRetrievedOk,
             data: user
@@ -35,11 +31,9 @@ export const getUserId = async (req: Request, res: Response) => {
 export const getUsers = async (req: Request, res: Response) => {
     try {
         const users = await getAllUsers();
-
         if (!users || users.length === 0) {
             return res.status(404).json({ response: UserNotFound });
         }
-
         return res.status(200).json({
             response: UsersRetrievedOk,
             data: users
