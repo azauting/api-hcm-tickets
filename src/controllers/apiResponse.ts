@@ -5,18 +5,6 @@ export const UserRetrievedOk = {
     message: 'Usuario obtenido con éxito', 
     detail: 'La información del usuario ha sido recuperada correctamente' 
 };
-// 201 - Éxito al crear usuario
-export const UserCreatedOk = { 
-    statusCode: 201, 
-    message: 'Usuario creado con éxito', 
-    detail: 'El usuario ha sido creado correctamente' 
-};
-// 204 - Éxito al eliminar usuario
-export const UserDeletedOk = { 
-    statusCode: 204, 
-    message: 'Usuario eliminado con éxito', 
-    detail: 'El usuario ha sido eliminado correctamente' 
-};
 
 // 400 - Solicitud incorrecta
 export const BadRequest = { 
