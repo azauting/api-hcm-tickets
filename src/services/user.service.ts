@@ -1,7 +1,7 @@
 import logger from 'pino'
 import type { User } from '../types/user.type'
 import pool from '../../db.config'
-import { useActionState } from 'react';
+
 
 const getUserFromDB = async (userId: number): Promise<User | undefined> => {
     // Realizamos la consulta a la base de datos para obtener el usuario por ID
