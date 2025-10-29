@@ -10,12 +10,22 @@ type VerifyResult =
     | { status: 'invalid_password' }
     | { status: 'ok'; user: User };
 
+
+
+//verificamos las credenciales del usuario    
+
 export const verifyUserCredentials = async (credentials: { correo: string; contrasena: string; }): Promise<VerifyResult> => {
     const logger = log.child({ action: 'verifyUserCredentials' });
     logger.info('Verificando credenciales del usuario');
 
     try {
-        const [result] = await pool.query('SELECT * FROM usuario WHERE correo = ?', [credentials.correo]);
+        //consultamos el usuario en la base de datos, y obtenemos su rol.id y nombre_rol
+        const [result] = await pool.query(`
+            SELECT u.*, r.nombre_rol 
+            FROM usuario u
+            INNER JOIN tipo_rol r ON u.rol_id = r.rol_id
+            WHERE u.correo = ?`,
+            [credentials.correo]);
         const users = result as User[];
         const user = users[0];
 

@@ -31,57 +31,51 @@ export const createAuthToken = async (user: UserWithRole): Promise<string> => {
     return token;
 };
 
+
 // Controller auth login 
 export const login = async (req: Request, res: Response) => {
     const { correo, contrasena } = req.body;
-
+    console.log("Body recibido:", req.body);
+    
+    //si no se agrega correo y contrasena se retorna error 400
     if (!correo || !contrasena) {
-        return res.status(400).json({ message: 'Correo y contraseña son obligatorios' });
-    }
-
-    if (!correo.endsWith('@hospital.cl')) {
-        return res.status(400).json({ message: 'El correo es inválido' });
+        return res.status(400).json({ message: "Correo y contraseña son obligatorios" });
     }
 
     try {
+        console.log("Verificando credenciales...");
+        
+        // llamamos al servicio de verificacion de credenciales
         const result = await verifyUserCredentials({ correo, contrasena });
+        console.log("🧾 Resultado de verificación:", result);
 
-        if (result.status === 'not_found') {
-            // Si prefieres seguridad, puedes responder 401 sin distinguir; aquí se diferencia explícitamente.
-            return res.status(404).json({ message: 'Correo no registrado' });
+        if (result.status === "not_found") {
+            return res.status(404).json({ message: "Correo no registrado" });
         }
 
-        if (result.status === 'invalid_password') {
-            return res.status(401).json({ message: 'Contraseña inválida' });
+        if (result.status === "invalid_password") {
+            return res.status(401).json({ message: "Contraseña inválida" });
         }
 
-        // result.status === 'ok'
         const user = result.user as UserWithRole;
 
+        console.log("Usuario encontrado:", user);
+
         const token = await createAuthToken(user);
-
-        // Establecemos headers explícitos (aunque Express ya pone Content-Type)
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Authorization', `Bearer ${token}`);
-
-        // Guardamos el token como cookie (opcional)
-        res.cookie('auth_token', token, {
-            httpOnly: true,
-            sameSite: 'strict',
-            secure: true,
-            maxAge: 60 * 60 * 1000,
-        });
+        console.log("Token generado correctamente");
 
         const { contrasena: _, ...userWithoutPassword } = user;
 
         return res.status(200).json({
-            message: 'Inicio de sesión exitoso',
+            message: "Inicio de sesión exitoso",
             user: userWithoutPassword,
-            token
+            token,
         });
-
     } catch (error) {
-        console.error('Error en login:', error);
-        return res.status(500).json({ message: 'Error interno del servidor' });
+        console.error("Error en login:", error);
+        return res.status(500).json({
+            message: "Error interno del servidor",
+            error: error instanceof Error ? error.message : error,
+        });
     }
 };
