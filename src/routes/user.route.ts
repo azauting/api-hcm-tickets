@@ -14,7 +14,7 @@ router.get('/users', getUsers) // list
 router.patch('/users/:id', updateUserPassword) // pendiente
 router.patch('/users/id', updateUserRole) // pendiente
 
-router.get("/",verifyToken ,checkRole(["administrador"]), getUsers);
+router.get("/",verifyToken, checkRole(["administrador"]), getUsers);
 
 
 
