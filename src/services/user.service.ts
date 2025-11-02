@@ -1,49 +1,63 @@
-import logger from 'pino'
-import type { User } from '../types/user.type'
-import pool from '../../db.config'
+// services/user.service.ts
+import pino from 'pino';
+import type { User } from '../types/user.type';
+import pool from '../../db.config';
+
+const log = pino().child({ service: 'userService' });
+
+type GetUserResult =
+    | { status: 'not_found' }
+    | { status: 'ok'; user: User };
+
+type GetAllUsersResult =
+    | { status: 'ok'; users: User[] }
+    | { status: 'empty' }; 
 
 
-const getUserFromDB = async (userId: number): Promise<User | undefined> => {
-    // Realizamos la consulta a la base de datos para obtener el usuario por ID
-    const [rows] = await pool.query('SELECT * FROM usuario WHERE usuario_id = ?', [userId]);
-    // Devolvemos el usuario encontrado
-    return (rows as User[])[0];
-}
+export const getUser = async (userId: number): Promise<GetUserResult> => {
+    log.info({ action: 'getUser', userId }, 'Obteniendo usuario por ID');
 
-//servicio para obtener un usuario por ID
-export const getUser = async (userId: number): Promise<User> => {
-    // Inicializamos el logger con el ID del usuario
-    const log = logger().child({ userId });
-    log.info(`Obteniendo usuario con ID: ${userId}`);
+    try {
+        const [rows] = await pool.query(
+            `SELECT usuario_id, nombre_completo, correo, rol_id FROM usuario WHERE usuario_id = ?`,
+            [userId]
+        );
 
-    const [result] = await pool.query('SELECT * FROM usuario WHERE usuario_id = ?', [userId]);
-    const users = result as User[];
-    const user = users[0];
-    // Verificar si se encontró el usuario
-    if (!user) {
-        log.warn(`Usuario con ID ${userId} no encontrado`);
-        return undefined;
+        const users = rows as User[];
+        const user = users[0];
+
+        if (!user) {
+            log.warn({ userId }, 'Usuario no encontrado');
+            return { status: 'not_found' };
+        }
+
+        log.info({ usuario_id: user.usuario_id }, 'Usuario obtenido correctamente');
+        return { status: 'ok', user };
+    } catch (err) {
+        log.error({ err, userId }, 'Error al obtener usuario');
+        throw err; 
     }
-    
-    log.info(`Usuario con ID ${userId} obtenido con éxito`);
-    return user;
 };
 
-// Servicio para obtener todos los usuarios
-export const getAllUsers = async (): Promise<User> => {
-    // Inicializamos el logger para la acción de obtención de todos los usuarios
-    const log = logger().child({ action: 'getAllUsers' });
+export const getAllUsers = async (): Promise<GetAllUsersResult> => {
+    log.info({ action: 'getAllUsers' }, 'Obteniendo todos los usuarios');
 
-    log.info('Obteniendo todos los usuarios desde la base de datos');
+    try {
+        const [rows] = await pool.query(
+            `SELECT usuario_id, nombre_completo, correo, rol_id FROM usuario`
+        );
 
-    const [result] = await pool.query('SELECT * FROM usuario');
-    const users = result as User[];
+        const users = rows as User[];
 
-    if (users.length === 0) {
-        log.warn('No se encontraron usuarios en la base de datos');
-    } else {
-        log.info(`Se obtuvieron ${users.length} usuarios correctamente`);
+        if (!users || users.length === 0) {
+            log.warn('No se encontraron usuarios');
+            return { status: 'empty' };
+        }
+
+        log.info({ count: users.length }, `Se obtuvieron ${users.length} usuarios`);
+        return { status: 'ok', users };
+    } catch (err) {
+        log.error({ err }, 'Error al obtener todos los usuarios');
+        throw err;
     }
-
-    return users;
 };

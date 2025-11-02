@@ -1,14 +1,14 @@
-import type { Request, Response, NextFunction } from "express";
-import { jwtVerify } from "jose";
-import { Unauthorized } from "../controllers/apiResponse";
+// middleware/verifyToken.ts
+import type { Request, Response, NextFunction } from 'express';
+import { jwtVerify } from 'jose';
 
 const JWT_SECRET_RAW = process.env.JWT_SECRET;
 const JWT_SECRET = JWT_SECRET_RAW ? new TextEncoder().encode(JWT_SECRET_RAW) : null;
 
 if (!JWT_SECRET) {
-    console.error("FATAL: JWT_SECRET no configurado");
+    console.error('FATAL: JWT_SECRET no configurado');// no lanzamos aquí para no romper imports, pero rutas protegidas deben devolver 500
 }
-// Extendemos la Request para incluir el usuario autenticado
+
 interface AuthenticatedRequest extends Request {
     user?: {
         id: number;
@@ -17,34 +17,37 @@ interface AuthenticatedRequest extends Request {
     };
 }
 
-/**
- * Middleware para verificar el token JWT de autenticación.
- * Si el token es válido, agrega el usuario a req.user.
- */
 export const verifyToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ message: 'Token de autenticación requerido' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    if (!token) {
+        return res.status(401).json({ message: 'Token de autenticación requerido' });
+    }
+
+    if (!JWT_SECRET) {
+        // falla de configuración
+        console.error('JWT_SECRET no configurado al verificar token');
+        return res.status(500).json({ message: 'Error de configuración del servidor' });
+    }
+
     try {
-        const authHeader = req.headers.authorization;
+        // Ahora TypeScript sabe que token es string y JWT_SECRET no es null
+        const { payload } = await jwtVerify(token, JWT_SECRET);
 
-        // No se envió el token
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            return res.status(Unauthorized.statusCode).json(Unauthorized);
-        }
-
-        const token = authHeader.split(" ")[1];
-
-        // Verificamos el token usando JOSE
-        const { payload } = await jwtVerify(token, JWT_SECRET!);
-
-        // Guardamos el payload del usuario decodificado
-        req.user = payload as AuthenticatedRequest["user"];
+        req.user = {
+            id: Number(payload.id),
+            correo: String((payload as any).correo),
+            role: String((payload as any).role),
+        };
 
         next();
     } catch (error) {
-        console.error("Error al verificar token:", error);
-        return res.status(401).json({
-            statusCode: 401,
-            message: "Token inválido o expirado",
-            detail: "El token proporcionado no es válido o ha expirado.",
-        });
+        console.error('Error al verificar token:', error);
+        return res.status(401).json({ message: 'Token inválido o expirado' });
     }
 };
