@@ -1,14 +1,24 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import db from './db.config';
-import userRoutes from './src/routes/user.route';
-import authRoutes from './src/routes/auth.route';
+import db from './src/config/db.config';
+import helmet from 'helmet';
+import bcrypt from 'bcryptjs';
+import userRoutes from './src/modules/user/user.route';
+import authRoutes from './src/modules/auth/auth.route';
+import ticketRoutes from './src/modules/ticket/ticket.route';
 
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
-
+app.use(helmet());
+app.use(helmet.contentSecurityPolicy({
+    directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        objectSrc: ["'none'"]
+    }
+}));
 // CORS: permitir el frontend (ajusta FRONTEND_ORIGIN en tu .env)
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN ?? 'http://localhost:4200';
 app.use(cors({
@@ -18,8 +28,6 @@ app.use(cors({
 
 app.use(express.json());
 
-
-import bcrypt from 'bcryptjs';
 const hashPasswords = async () => {
     const [result] = await db.query('SELECT usuario_id, contrasena FROM usuario');
     const users = result as { usuario_id: number; contrasena: string; }[];
@@ -39,9 +47,12 @@ const hashPasswords = async () => {
 app.get('/', (req, res) => {
     res.send('api-hospital-v1 funcionando correctamente');
 });
-// rutas de usuario
-app.use('/api', userRoutes);
+// rutas auth
 app.use('/api/auth', authRoutes);
+// rutas usuarios
+app.use('/api', userRoutes);
+// rutas tickets
+app.use('/api', ticketRoutes);
 
 const startServer = async () => {
     try {

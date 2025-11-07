@@ -1,29 +1,19 @@
-import type { Request, Response, NextFunction } from "express";
-
-
-interface AuthenticatedRequest extends Request {
-    user?: {
-        id: number;
-        correo: string;
-        role: string;
-    };
-}
+import type { Response, NextFunction } from 'express';
+import type { AuthRequest } from '../utils/interfaces';
+import { sendResponse } from '../utils/helper';
 
 export const checkRole = (allowedRoles: string[]) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    // Si el usuario no está autenticado (req.user vacío)
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    // Verificar autenticación
     if (!req.user) {
-        return res.status(401).json({ response: "No autorizado" });
+      return sendResponse(res, 401, 'No autorizado: usuario no autenticado');
     }
 
-    const userRole = req.user.role;
-
-    // Si el rol del usuario no está entre los permitidos
-    if (!allowedRoles.includes(userRole)) {
-        return res.status(403).json({ response: "Acceso prohibido: rol insuficiente" });
-    };
-    // Si pasa todas las validaciones, continúa
+    //  Verificar permisos por rol
+    if (!allowedRoles.includes(req.user.tipo_rol)) {
+      return sendResponse(res, 403, 'Acceso prohibido: rol insuficiente');
+    }
+    // Permisos verificados, continuar
     next();
   };
 };
-
