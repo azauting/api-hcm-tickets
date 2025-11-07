@@ -1,12 +1,12 @@
 import type { Request, Response } from 'express';
-import type { AuthenticatedRequest } from '../../middlewares/verifyToken';
+import type { AuthRequest } from '../../utils/interfaces';
 import { validadorTicketForm } from '../../utils/validatorTicketForm';
 import { ticketService } from './ticket.service';
 import pino from 'pino';
 
 const log = pino().child({ service: 'ticketController' });
 
-export const newTicket = async (req: AuthenticatedRequest, res: Response) => {
+export const newTicket = async (req: AuthRequest, res: Response) => {
     // primer paso, obtener el usuario_id desde el token
     const usuario_id_solicita = req.user!.id
     log.info({ usuario_id_solicita }, 'Creando ticket para usuario');
