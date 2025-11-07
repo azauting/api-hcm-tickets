@@ -8,6 +8,5 @@ const router = express.Router();
 // Rutas de ticket
 router.post('/tickets', verifyToken, newTicket); // falta mejorar
 router.get('/tickets/:id', getTicketById); // falta mejorar
-// router.get('/tickets/movimientos', getTicketMovements); // pendiente
 
 export default router;
