@@ -2,11 +2,13 @@ import type { Request, Response } from 'express';
 import type { AuthRequest } from '../../utils/interfaces';
 import { validadorTicketForm } from '../../utils/validatorTicketForm';
 import { ticketService } from './ticket.service';
-import pino from 'pino';
+import { logger } from '../../utils/logger';
 
-const log = pino().child({ service: 'ticketController' });
+const log = logger.child({ ubicacion: 'ticketController' });
 
-export const newTicket = async (req: AuthRequest, res: Response) => {
+
+
+const createTicket = async (req: AuthRequest, res: Response) => {
     // primer paso, obtener el usuario_id desde el token
     const usuario_id_solicita = req.user!.id
     log.info({ usuario_id_solicita }, 'Creando ticket para usuario');
@@ -67,7 +69,7 @@ export const newTicket = async (req: AuthRequest, res: Response) => {
     });
 };
 
-export const getTicketById = async (req: Request, res: Response) => {
+const getTicketById = async (req: Request, res: Response) => {
     const ticketId = Number(req.params.id);
 
     if (isNaN(ticketId)) {
@@ -87,3 +89,6 @@ export const getTicketById = async (req: Request, res: Response) => {
     return res.status(200).json({ ticket: result.ticket });
 };
 
+
+
+export { createTicket, getTicketById };

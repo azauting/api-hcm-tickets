@@ -1,8 +1,8 @@
 import type { Ticket, TicketMovimiento } from '../../utils/interfaces';
 import pool from '../../config/db.config';
-import pino from 'pino';
+import { logger } from '../../utils/logger';
 
-const log = pino().child({ service: 'ticketService' });
+const log = logger.child({ service: 'ticketService' });
 
 type GetTicketResult =
     | { status: 'ok'; ticket: Ticket }

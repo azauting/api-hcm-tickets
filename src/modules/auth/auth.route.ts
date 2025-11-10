@@ -4,6 +4,7 @@ import { verifyToken } from '../../middlewares/verifyToken';
 import type { Response } from 'express';
 import type { AuthRequest } from '../../utils/interfaces';
 import { sendResponse } from '../../utils/helper';
+
 const router = express.Router();
 
 // Rutas de autenticación 

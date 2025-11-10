@@ -6,7 +6,7 @@ import type { RowDataPacket } from 'mysql2';
 import type { UserWithRole, JWTPayload } from '../../utils/interfaces';
 import type { Credentials, VerifyResult } from '../../utils/types';
 
-const log = logger.child({ service: 'authService' });
+const log = logger.child({ ubicacion: 'authService' });
 
 const JWT_SECRET_RAW = process.env.JWT_SECRET;
 export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '1h';

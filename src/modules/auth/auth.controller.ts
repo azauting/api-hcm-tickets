@@ -1,6 +1,9 @@
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { sendResponse } from '../../utils/helper';
+import { logger } from '../../utils/logger';
+
+const log = logger.child({ ubicacion: 'authController' });
 
 export const login = async (req: Request, res: Response) => {
     const { correo, contrasena } = req.body;
