@@ -6,10 +6,12 @@ import { verifyToken } from '../../middlewares/verifyToken';
 // inicializamos el router
 const router = express.Router();
 
-router.get('/users/:id', getUserById); // listo
+// obtener los usuarios
 router.get('/users', getUsers) // listo
+// obtener el usuario por id
+router.get('/users/:id', getUserById); // listo
+// actualizar el usuario rol/unidad/contrasena
 router.patch('/users/:id', updateUserPassword) // pendiente
-router.patch('/users/id', updateUserRole) // pendiente
 
 // router.get("/users",verifyToken, checkRole(["administrador", ), getUsers);
 

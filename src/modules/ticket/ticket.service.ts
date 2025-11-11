@@ -16,7 +16,7 @@ type CreateTicketResult =
 export const ticketService = {
     createTicket: async (nuevoTicket: Ticket): Promise<CreateTicketResult> => {
         log.info({ action: 'createTicket', usuario_id_solicita: nuevoTicket.usuario_id_solicita }, 'Creando nuevo ticket' );
-        
+        // primera parte, crea el ticket
         try {
             const [result] = await pool.query(
                 `INSERT INTO ticket 
@@ -42,6 +42,7 @@ export const ticketService = {
             const insertedId = (result as any).insertId;
 
             log.info({ ticket_id: insertedId }, 'Ticket creado correctamente');
+
 
             return {
                 status: 'ok',
