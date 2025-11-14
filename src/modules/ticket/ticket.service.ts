@@ -1,86 +1,70 @@
-import type { Ticket, TicketMovimiento, TipoEstado } from '../../utils/interfaces';
+import type { Ticket, TicketCreateDTO, TicketMovimiento, TipoEstado } from '../../utils/interfaces';
+import type { ResultSetHeader } from 'mysql2';
 import pool from '../../config/db.config';
 import { logger } from '../../utils/logger';
+import type {
+    CreateTicketResult,
+    GetTicketResult,
+    GetAllTipoEstado,
+    GetPriorityType,
+    GetOriginType,
+    GetEventType,
+    GetUbicationType,
+    GetUnityType
+} from '../../utils/types';
+import { ticketLogController } from '../ticketLog/ticketLog.controller';
+import type { TicketMovimientoCreateDTO } from '../../utils/interfaces';
 
 const log = logger.child({ service: 'ticketService' });
-
-type GetTicketResult =
-    | { status: 'ok'; ticket: Ticket }
-    | { status: 'not_found' }
-    | { status: 'error'; message: string };
-
-type CreateTicketResult =
-    | { status: 'ok'; ticket_id: number }
-    | { status: 'error'; message: string };
-
-type GetAllTipoEstado =
-    | { status: 'ok'; estados: TipoEstado[] }
-    | { status: 'empty' }
-    | { status: 'error'; message: string };
-
-type GetPriorityType =
-    | { status: 'ok'; priorities: any[] }
-    | { status: 'empty' }
-    | { status: 'error'; message: string };
-
-type GetOriginType =
-    | { status: 'ok'; origen: any[] }
-    | { status: 'empty' }
-    | { status: 'error'; message: string };
-
-type GetEventType =
-    | { status: 'ok'; eventos: any[] }
-    | { status: 'empty' }
-    | { status: 'error'; message: string };
-    
-type GetUbicationType = 
-    | {status:'ok'; ubicaciones: any[]}
-    | {status:'empty'}
-    | {status: 'error'; message: string}
-
-type GetUnityType =  
-    | { status: 'ok'; unidades: any[] }
-    | { status: 'empty' }
-    | { status: 'error'; message: string }
-
 
 
 
 export const ticketService = {
-    createTicket: async (nuevoTicket: Ticket): Promise<CreateTicketResult> => {
-        log.info({ action: 'createTicket', usuario_id_solicita: nuevoTicket.usuario_id_solicita }, 'Creando nuevo ticket');
+    createTicket: async (ticketObjeto: TicketCreateDTO): Promise<CreateTicketResult> => {
+        log.info({ action: 'createTicket', usuario_id_solicita: ticketObjeto.usuario_id_solicita }, 'Creando nuevo ticket');
         // primera parte, crea el ticket
         try {
-            const [result] = await pool.query(
+            const [result] = await pool.query<ResultSetHeader>(
                 `INSERT INTO ticket 
-                (usuario_id_solicita, asunto, descripcion, telefono, autor_problema, ubicacion_id, direccion_ip, estado_de_revision, tipo_prioridad_id, tipo_unidad_id, tipo_estado_id, tipo_origen_id, tipo_evento_id) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    (usuario_id_solicita, asunto, descripcion, telefono, autor_problema, ubicacion_id, direccion_ip, estado_de_revision, tipo_prioridad_id, tipo_unidad_id, tipo_estado_id, tipo_origen_id, tipo_evento_id) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
-                    nuevoTicket.usuario_id_solicita,
-                    nuevoTicket.asunto,
-                    nuevoTicket.descripcion,
-                    nuevoTicket.telefono,
-                    nuevoTicket.autor_problema,
-                    nuevoTicket.ubicacion_id,
-                    nuevoTicket.direccion_ip,
-                    nuevoTicket.estado_de_revision,
-                    nuevoTicket.tipo_prioridad_id,
-                    nuevoTicket.tipo_unidad_id,
-                    nuevoTicket.tipo_estado_id,
-                    nuevoTicket.tipo_origen_id,
-                    nuevoTicket.tipo_evento_id,
+                    ticketObjeto.usuario_id_solicita,
+                    ticketObjeto.asunto,
+                    ticketObjeto.descripcion,
+                    ticketObjeto.telefono,
+                    ticketObjeto.autor_problema,
+                    ticketObjeto.ubicacion_id,
+                    ticketObjeto.direccion_ip,
+                    ticketObjeto.estado_de_revision,
+                    ticketObjeto.tipo_prioridad_id,
+                    ticketObjeto.tipo_unidad_id,
+                    ticketObjeto.tipo_estado_id,
+                    ticketObjeto.tipo_origen_id,
+                    ticketObjeto.tipo_evento_id,
                 ]
             );
 
-            const insertedId = (result as any).insertId;
-
+            const insertedId = result.insertId;
             log.info({ ticket_id: insertedId }, 'Ticket creado correctamente');
+            // crear movimiento (llama al servicio directamente, NO al controlador)
+            const objetoMovimiento: TicketMovimientoCreateDTO = {
+                ticket_id: insertedId,
+                tipo_movimiento_id: 1,
+                usuario_id: ticketObjeto.usuario_id_solicita
+            }
+            const logResult = await ticketLogController.createTicketLog(objetoMovimiento);
 
+            if (logResult.status === 'error') {
+                log.error({ ticket_id: insertedId }, 'Error al crear el log del ticket')
+                // revertimos el ticket creado
+                await pool.query(`DELETE FROM ticket WHERE ticket_id = ?`, [insertedId]);
+                return { status: 'error', message: 'Error al crear el log del ticket, ticket revertido' };
+            } else {
+                log.info({ ticket_id: insertedId }, 'Log del ticket creado correctamente');
+            }
 
-            return {
-                status: 'ok',
-                ticket_id: insertedId
-            };
+            return { status: 'ok', ticket_id: insertedId };
         } catch (error) {
             log.error({ err: error }, 'Error al crear el ticket');
             return {
@@ -212,35 +196,35 @@ export const ticketService = {
         }
     },
     GetAllTipoEvento: async (): Promise<GetEventType> => {
-        log.info({action:'GetAlltipoEvento'}, 'Obteniendo todos los tipos de evento');
+        log.info({ action: 'GetAlltipoEvento' }, 'Obteniendo todos los tipos de evento');
 
-        try{
+        try {
             const [rows] = await pool.query(
                 'SELECT tipo_evento_id,evento FROM tipo_evento'
             )
 
             const eventos = rows as { tipo_evento_id: number; evento: string }[];
 
-            if(!eventos.length){
+            if (!eventos.length) {
                 log.warn('no se encontraron tipos de eventos')
-                return {status:'empty'}
+                return { status: 'empty' }
             }
 
             log.info('tipo de evento obtenido correctamente')
-            return{status:'ok',eventos}
+            return { status: 'ok', eventos }
 
-        }catch(error){
+        } catch (error) {
             log.error({ err: error }, 'Error al obtener los tipos de evento');
             return { status: 'error', message: 'Error al obtener los tipos de evento' };
         }
     },
-    GetAllUbicacion: async (): Promise<GetUbicationType> =>{
-        log.info([{action:'GetAllUbicacion'}],'obteniendo todas las ubicaciones')
-    
-        
-        try{
+    GetAllUbicacion: async (): Promise<GetUbicationType> => {
+        log.info([{ action: 'GetAllUbicacion' }], 'obteniendo todas las ubicaciones')
+
+
+        try {
             const [rows] = await pool.query('SELECT ubicacion.ubicacion_id,ubicacion.ubicacion,ubicacion.area_id,area.nombre_area FROM ubicacion JOIN area ON ubicacion.area_id = area.area_id;')
-            
+
             const ubicaciones = rows as {
                 ubicacion_id: number;
                 ubicacion: string;
@@ -249,41 +233,41 @@ export const ticketService = {
             }[];
 
 
-            if(!ubicaciones.length){
+            if (!ubicaciones.length) {
                 log.warn('no se encontraron ubicaciones')
-                return {status:'empty'}
+                return { status: 'empty' }
             }
-            
-            log.info('ubicaciones obtenidas correctamente')
-            return{status:'ok',ubicaciones}
 
-        }catch(error){
-            log.error({err:error},'error al obtener las ubicaciones');
-            return{status:'error',message:'error al obtener todas las ubicaciones'}
+            log.info('ubicaciones obtenidas correctamente')
+            return { status: 'ok', ubicaciones }
+
+        } catch (error) {
+            log.error({ err: error }, 'error al obtener las ubicaciones');
+            return { status: 'error', message: 'error al obtener todas las ubicaciones' }
         }
 
     },
-    GetAllUnidad : async(): Promise<GetUnityType> =>{
-        log.info ({action:'GetAllUnidad'},'obteniendo todos los tipos de unidad')
+    GetAllUnidad: async (): Promise<GetUnityType> => {
+        log.info({ action: 'GetAllUnidad' }, 'obteniendo todos los tipos de unidad')
 
-        try{
+        try {
             const [rows] = await pool.query('SELECT unidad_id,tipo_unidad FROM tipo_unidad')
 
             const unidades = rows as {
-                unidad_id : number,
-                tipo_unidad : string;
+                unidad_id: number,
+                tipo_unidad: string;
             }[];
 
-            if (!unidades.length){
+            if (!unidades.length) {
                 log.warn('no se encontraron las unidades')
-                return{status:'empty'}
+                return { status: 'empty' }
             }
             log.info('ubicaciones obtenidas correctamente')
-            return{status:'ok',unidades};
+            return { status: 'ok', unidades };
 
-        }catch(error){
-            log.error({err:error},'error al obtener las unidades')
-            return{status:'error',message:'error al obtener todas las unidades'}
+        } catch (error) {
+            log.error({ err: error }, 'error al obtener las unidades')
+            return { status: 'error', message: 'error al obtener todas las unidades' }
         }
 
     }

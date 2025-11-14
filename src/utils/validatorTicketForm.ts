@@ -1,4 +1,11 @@
-import type { TicketForm } from './interfaces';
+// ticketForm
+export interface TicketForm {
+    asunto: string;
+    descripcion: string;
+    telefono: string;
+    autor_problema: string;
+    ubicacion_id: number;
+}
 
 // Resultado de la validación
 interface ValidationResult {

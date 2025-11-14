@@ -1,4 +1,4 @@
-import type { User, Ticket, UserWithRole } from './interfaces';
+import type { User, Ticket, UserWithRole, TipoEstado } from './interfaces';
 
 export type GetUserResult =
     | { status: 'ok'; user: User }
@@ -8,9 +8,6 @@ export type GetAllUsersResult =
     | { status: 'ok'; users: User[] }
     | { status: 'empty' };
 
-export type GetTicketResult =
-    | { status: 'ok'; ticket: Ticket }
-    | { status: 'not_found' };
 
 export type GetAllTicketsResult =
     | { status: 'ok'; tickets: Ticket[] }
@@ -25,3 +22,42 @@ export type VerifyResult =
     | { status: 'not_found' }
     | { status: 'invalid_password' }
     | { status: 'ok'; user: UserWithRole };
+
+export type GetTicketResult =
+    | { status: 'ok'; ticket: Ticket }
+    | { status: 'not_found' }
+    | { status: 'error'; message: string };
+
+export type CreateTicketResult =
+    | { status: 'ok'; ticket_id: number }
+    | { status: 'error'; message: string };
+
+export type GetAllTipoEstado =
+    | { status: 'ok'; estados: TipoEstado[] }
+    | { status: 'empty' }
+    | { status: 'error'; message: string };
+
+export type GetPriorityType =
+    | { status: 'ok'; priorities: any[] }
+    | { status: 'empty' }
+    | { status: 'error'; message: string };
+
+export type GetOriginType =
+    | { status: 'ok'; origen: any[] }
+    | { status: 'empty' }
+    | { status: 'error'; message: string };
+
+export type GetEventType =
+    | { status: 'ok'; eventos: any[] }
+    | { status: 'empty' }
+    | { status: 'error'; message: string };
+    
+export type GetUbicationType = 
+    | {status:'ok'; ubicaciones: any[]}
+    | {status:'empty'}
+    | {status: 'error'; message: string}
+
+export type GetUnityType =  
+    | { status: 'ok'; unidades: any[] }
+    | { status: 'empty' }
+    | { status: 'error'; message: string }

@@ -1,6 +1,7 @@
 import type { Request } from 'express';
 import type { JWTPayload as JoseJWTPayload } from 'jose';
 
+// MODELOS DE LA BASE DE DATOS
 // Usuario
 export interface User {
     usuario_id: number;
@@ -86,6 +87,8 @@ export interface TicketMovimiento {
     fecha: Date; // 
 }
 
+// INTEFACES PARA EL AUTH
+
 export interface JWTPayload {
     id: number;
     correo: string;
@@ -107,7 +110,6 @@ export interface UserWithRole extends User {
     tipo_unidad?: string | null;
 }
 
-
 // AuthRequest extiende Request para incluir información del usuario autenticado
 export interface AuthRequest extends Request {
     user?: {
@@ -118,3 +120,26 @@ export interface AuthRequest extends Request {
     };
 }
 
+// MOLDE PARA CRAER UN TICKET
+export interface TicketCreateDTO {
+    usuario_id_solicita: number;
+    asunto: string;
+    descripcion?: string;
+    telefono?: string;
+    autor_problema?: string;
+    ubicacion_id?: number | null;
+    direccion_ip: string; // guardar IPv4/IPv6
+    estado_de_revision: number;
+    tipo_prioridad_id: number;
+    tipo_unidad_id: number;
+    tipo_estado_id: number;
+    tipo_origen_id: number;
+    tipo_evento_id: number;
+}
+
+// MOLDE PARA CREAR UN MOVIMIENTO
+export interface TicketMovimientoCreateDTO {
+    ticket_id: number;
+    tipo_movimiento_id: number;
+    usuario_id: number;
+}

@@ -3,31 +3,35 @@ import type { AuthRequest } from '../../utils/interfaces';
 import { validadorTicketForm } from '../../utils/validatorTicketForm';
 import { ticketService } from './ticket.service';
 import { logger } from '../../utils/logger';
+import type { TicketCreateDTO } from '../../utils/interfaces';
 
 const log = logger.child({ ubicacion: 'ticketController' });
 
-
-
+// controlador para crear un nuevo ticket, pendiente
 const createTicket = async (req: AuthRequest, res: Response) => {
-    // primer paso, obtener el usuario_id desde el token
+    // 1. obtener el usuario_id desde el token
     const usuario_id_solicita = req.user!.id
     log.info({ usuario_id_solicita }, 'Creando ticket para usuario');
-    // segundo paso, validar los datos del ticket
+    // 2.  validar los datos del ticket
     const { isValid, message, ticket: ticketValidado } = validadorTicketForm(req.body);
-    // Si no es valido, retornar error
+    // Si no es valido retorna un error
     if (!isValid || !ticketValidado) {
         return res.status(400).json({ message });
     }
+    // Si es valido, continua el proceso
     log.info({ usuario_id_solicita }, 'Datos del ticket validados');
-    // tercer paso, construir el objeto ticket
-    const nuevoTicket = {
+    // 3. preparar el objeto del nuevo ticket
+
+    // Antes de preparar el objeto debemos obtener la direccion IP del usuario
+
+    const ticketObject: TicketCreateDTO = {
         usuario_id_solicita,
         asunto: ticketValidado.asunto,
         descripcion: ticketValidado.descripcion,
         telefono: ticketValidado.telefono,
         autor_problema: ticketValidado.autor_problema,
         ubicacion_id: ticketValidado.ubicacion_id, // todo: crear las ubicaciones
-        direccion_ip: "vacio", // falta agregar esta parte 
+        direccion_ip: req.ip!,
         estado_de_revision: 1,
         tipo_prioridad_id: 1,
         tipo_unidad_id: 1,
@@ -36,7 +40,7 @@ const createTicket = async (req: AuthRequest, res: Response) => {
         tipo_evento_id: 1,
     };
     // cuarto paso, enviar el ticket al service para crear el ticket
-    const result = await ticketService.createTicket(nuevoTicket);
+    const result = await ticketService.createTicket(ticketObject);
 
     // quinto paso, manejar los posibles resultados
     if (result.status === 'error') {
@@ -48,47 +52,30 @@ const createTicket = async (req: AuthRequest, res: Response) => {
 
     log.info({ usuario_id_solicita, ticket_id }, 'Ticket creado');
 
-    // séptimo paso, registrar el movimiento en la tabla de ticket_movimiento
-    const nuevo_ticket_movimiento = {
-        ticket_id,
-        usuario_id: usuario_id_solicita,
-        tipo_movimiento_id: 1, // crear
-    };
-
-    // octavo paso, llamar al servicio para crear el ticket_movimiento
-    const auditResult = await ticketService.createTicketLog(nuevo_ticket_movimiento);
-
-    // noveno paso, manejar posibles errores en la auditoria
-    if (auditResult.status === 'error') {
-        log.error({ usuario_id_solicita, ticket_id }, 'Error al registrar el movimiento del ticket');
-
-    }
     // décimo paso, retornar respuesta exitosa
     return res.status(201).json({
         message: 'Ticket creado exitosamente',
     });
 };
 
-const getTicketById = async (req: Request, res: Response) => {
-    const ticketId = Number(req.params.id);
-
-    if (isNaN(ticketId)) {
-        return res.status(400).json({ message: 'ID de ticket inválido' });
-    }
-
-    const result = await ticketService.getTicket(ticketId);
-
-    if (result.status === 'not_found') {
-        return res.status(404).json({ message: 'Ticket no encontrado' });
-    }
+// metodo para obtener todos los tipos
+/*const getTicketTypes = async (req: Request, res: Response) => {
+    const type = req.params.type;
+    const result = await ticketService.getAllTicketTypes();
 
     if (result.status === 'error') {
         return res.status(500).json({ message: result.message });
     }
 
-    return res.status(200).json({ ticket: result.ticket });
-};
+    if (result.status === 'empty') {
+        return res.status(404).json({ message: 'No se encontraron tipos de ticket' });
+    }
 
+    return res.status(200).json({
+        message: 'Tipos de ticket obtenidos correctamente',
+        data: result.tipos,
+    });
+}; */
 // metodo para obtener todos los tipos de estado
 const GetStatusType = async (req: Request, res: Response) => {
 
@@ -194,4 +181,4 @@ const GetUnityType = async (req: Request, res: Response) => {
 };
 
 
-export { createTicket, getTicketById, GetStatusType, GetPriorityType, GetOriginType,GetEventType,GetLocationType,GetUnityType };
+export { createTicket, GetStatusType, GetPriorityType, GetOriginType,GetEventType,GetLocationType,GetUnityType };
