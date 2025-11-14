@@ -61,7 +61,7 @@ const createTicket = async (req: AuthRequest, res: Response) => {
     // noveno paso, manejar posibles errores en la auditoria
     if (auditResult.status === 'error') {
         log.error({ usuario_id_solicita, ticket_id }, 'Error al registrar el movimiento del ticket');
-        
+
     }
     // décimo paso, retornar respuesta exitosa
     return res.status(201).json({
@@ -89,6 +89,109 @@ const getTicketById = async (req: Request, res: Response) => {
     return res.status(200).json({ ticket: result.ticket });
 };
 
+// metodo para obtener todos los tipos de estado
+const GetStatusType = async (req: Request, res: Response) => {
+
+    const result = await ticketService.getAllTipoEstado();
+
+    if (result.status === 'error') {
+        return res.status(500).json({ message: result });
+    }
+
+    if (result.status === 'empty') {
+        return res.status(404).json({
+            message: 'No se encontraron tipos de estado registrados', data: [],
+        });
+    }
+
+    // status === 'ok'
+    return res.status(200).json({
+        message: 'Tipos de estado obtenidos correctamente',
+        data: result.estados,
+    });
+};
+//metodos para obtener todos los tipos de prioridad
+
+const GetPriorityType = async (req: Request, res: Response) => {
+
+    const result = await ticketService.GetAllTiprioridad();
+
+    if (result.status === 'empty') {
+        return res.status(404).json({ message: 'No se encontraron prioridades' });
+    }
+
+    if (result.status === 'error') {
+        return res.status(500).json({ message: result.message });
+    }
+
+    return res.status(200).json({
+        message: 'Tipos de prioridad obtenidos correctamente',
+        data: result.priorities,
+    });
+
+}
+
+// metodo para obtener todos los tipos de origen
+const GetOriginType = async (req: Request, res: Response) => {
+    const result = await ticketService.getAllTipoOrigen();
+
+    if (result.status === 'empty') {
+        return res.status(404).json({ message: 'No se encontraron tipos de origen' });
+    }
+
+    if (result.status === 'error') {
+        return res.status(500).json({ message: result.message });
+    }
+
+    return res.status(200).json({message: 'Tipos de origen obtenidos correctamente', data: result.origen,
+    });
+}; 
+
+const GetEventType = async (req: Request, res: Response) => {
+    const result = await ticketService.GetAllTipoEvento();
+
+    if (result.status === 'empty'){
+        return res.status(404).json({message:'no se encontraron tipos de eventos'})
+    }
+
+    if (result.status === 'error'){
+        return res.status(500).json({message: result.message})
+    }
+
+    return res.status(200).json({message: 'tipos de eventos obtenidos correctamente', data:result.eventos})
+}
+
+const GetLocationType = async (req:Request,res:Response)=>{
+    const result = await ticketService.GetAllUbicacion();
+
+    if (result.status === 'empty'){
+        return res.status(404).json({message:'no se encontraron las ubicaciones'})
+    }
+    
+    if (result.status === 'error'){
+        return res.status(500).json({message:result.message})
+    }
+
+    return res.status(200).json({message:'ubicaciones obtenidas correctamente',data:result.ubicaciones})
 
 
-export { createTicket, getTicketById };
+}
+
+const GetUnityType = async (req: Request, res: Response) => {
+    const result = await ticketService.GetAllUnidad();
+
+    if (result.status === 'empty') {
+        return res.status(404).json({ message: 'No se encontraron tipos de unidad' });
+    }
+
+    if (result.status === 'error') {
+        return res.status(500).json({ message: result.message });
+    }
+
+    
+    return res.status(200).json({
+        message: 'Tipos de unidad obtenidos correctamente',data: result.unidades});
+};
+
+
+export { createTicket, getTicketById, GetStatusType, GetPriorityType, GetOriginType,GetEventType,GetLocationType,GetUnityType };
