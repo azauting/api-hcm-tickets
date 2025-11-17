@@ -151,7 +151,7 @@ export const ticketService = {
             return { status: 'error', message: 'Error al obtener los tipos de estado' };
         }
     },
-    GetAllTiprioridad: async (): Promise<GetPriorityType> => {
+    getAllTipoPrioridad: async (): Promise<GetPriorityType> => {
         log.info({ action: 'getAllTipoPrioridad' }, 'Obteniendo todas las prioridades');
 
         try {
@@ -195,7 +195,7 @@ export const ticketService = {
             return { status: 'error', message: 'Error al obtener los tipos de origen' };
         }
     },
-    GetAllTipoEvento: async (): Promise<GetEventType> => {
+    getAllTipoEvento: async (): Promise<GetEventType> => {
         log.info({ action: 'GetAlltipoEvento' }, 'Obteniendo todos los tipos de evento');
 
         try {
@@ -218,7 +218,7 @@ export const ticketService = {
             return { status: 'error', message: 'Error al obtener los tipos de evento' };
         }
     },
-    GetAllUbicacion: async (): Promise<GetUbicationType> => {
+    getAllUbicacion: async (): Promise<GetUbicationType> => {
         log.info([{ action: 'GetAllUbicacion' }], 'obteniendo todas las ubicaciones')
 
 
@@ -247,7 +247,7 @@ export const ticketService = {
         }
 
     },
-    GetAllUnidad: async (): Promise<GetUnityType> => {
+    getAllUnidad: async (): Promise<GetUnityType> => {
         log.info({ action: 'GetAllUnidad' }, 'obteniendo todos los tipos de unidad')
 
         try {

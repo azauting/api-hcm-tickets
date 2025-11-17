@@ -77,7 +77,7 @@ const createTicket = async (req: AuthRequest, res: Response) => {
     });
 }; */
 // metodo para obtener todos los tipos de estado
-const GetStatusType = async (req: Request, res: Response) => {
+const getStatusType = async (req: Request, res: Response) => {
 
     const result = await ticketService.getAllTipoEstado();
 
@@ -99,9 +99,9 @@ const GetStatusType = async (req: Request, res: Response) => {
 };
 //metodos para obtener todos los tipos de prioridad
 
-const GetPriorityType = async (req: Request, res: Response) => {
+const getPriorityType = async (req: Request, res: Response) => {
 
-    const result = await ticketService.GetAllTiprioridad();
+    const result = await ticketService.getAllTipoPrioridad();
 
     if (result.status === 'empty') {
         return res.status(404).json({ message: 'No se encontraron prioridades' });
@@ -119,7 +119,7 @@ const GetPriorityType = async (req: Request, res: Response) => {
 }
 
 // metodo para obtener todos los tipos de origen
-const GetOriginType = async (req: Request, res: Response) => {
+const getOriginType = async (req: Request, res: Response) => {
     const result = await ticketService.getAllTipoOrigen();
 
     if (result.status === 'empty') {
@@ -134,8 +134,8 @@ const GetOriginType = async (req: Request, res: Response) => {
     });
 }; 
 
-const GetEventType = async (req: Request, res: Response) => {
-    const result = await ticketService.GetAllTipoEvento();
+const getEventType = async (req: Request, res: Response) => {
+    const result = await ticketService.getAllTipoEvento();
 
     if (result.status === 'empty'){
         return res.status(404).json({message:'no se encontraron tipos de eventos'})
@@ -148,7 +148,7 @@ const GetEventType = async (req: Request, res: Response) => {
     return res.status(200).json({message: 'tipos de eventos obtenidos correctamente', data:result.eventos})
 }
 
-const GetLocationType = async (req:Request,res:Response)=>{
+const getLocationType = async (req:Request,res:Response)=>{
     const result = await ticketService.GetAllUbicacion();
 
     if (result.status === 'empty'){
@@ -164,7 +164,7 @@ const GetLocationType = async (req:Request,res:Response)=>{
 
 }
 
-const GetUnityType = async (req: Request, res: Response) => {
+const getUnityType = async (req: Request, res: Response) => {
     const result = await ticketService.GetAllUnidad();
 
     if (result.status === 'empty') {
@@ -181,4 +181,4 @@ const GetUnityType = async (req: Request, res: Response) => {
 };
 
 
-export { createTicket, GetStatusType, GetPriorityType, GetOriginType,GetEventType,GetLocationType,GetUnityType };
+export { createTicket, getStatusType, getPriorityType, getOriginType,getEventType,getLocationType,getUnityType };
