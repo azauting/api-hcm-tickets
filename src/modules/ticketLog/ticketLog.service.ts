@@ -8,6 +8,7 @@ const log = logger.child({ ubicacion: 'ticketLogService' });
 export const ticketLogService = {
     // versión simple (usa pool directamente)
     createTicketLog: async (objetoMovimiento: TicketMovimientoCreateDTO) => {
+        log.info({ action: 'createTicketLog', objetoMovimiento }, 'Insertando nuevo ticket_movimiento');
         try {
             const [result] = await pool.query<ResultSetHeader>(
                 `INSERT INTO ticket_movimiento (ticket_id, tipo_movimiento_id, usuario_id, fecha)

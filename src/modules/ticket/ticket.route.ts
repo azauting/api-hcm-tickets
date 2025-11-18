@@ -7,13 +7,94 @@ const router = express.Router();
 
 
 
-// 1. ruta para crear un nuevo ticket 
+
 // checklist
 // - crear ticket [listo]
-// - registrar movimiento en la auditoria [pendiente]
+// - registrar movimiento en la auditoria [listo]
+
+
+// ruta para crear un nuevo ticket 
 router.post('/tickets', verifyToken, createTicket)
 
+// ruta para cancelar ticket antes de los 5 minutos
+router.delete('/tickets/:id', verifyToken, (req, res) => {
+    res.json({ message: 'Ruta para cancelar un ticket - en desarrollo' });
+    // obtener el ticket id
+    // obtenemos el momento de creacion del ticket para verificar si es dentro de los 5 minutos
+    // si es dentro de los 5 minutos
+    // llamamos al servicio para eliminar el ticket
+    // retornamos el resultado
+});
 
+// ruta para obtener mis tickets
+router.get('/tickets/mis-tickets', verifyToken, (req, res) => {
+    res.json({ message: 'Ruta para obtener mis tickets - en desarrollo' });
+    // obtener el usuario id del token
+    // llamamos al servicio
+    // obtenemos los tickets del usuario
+    // retornamos los tickets
+    // paginacion y filtros (estado/pioridad/tipo)
+});
+
+// ruta para ver los tickets por unidad 
+router.get('/tickets/unidad/:unidad_id', verifyToken, checkRole(['administrador', 'soporte']), (req, res) => {
+    res.json({ message: 'Ruta para obtener los tickets por unidad - en desarrollo' });
+    // obtenemos la informacion del usuario desde el token
+    // verificamos la unidad del usuario
+    // llamamos al servicio para mostrar los ticket de su unidad 
+    // funcion(unidad_id) -> el servicio recibe la unidad id y hace la consulta en base ese id
+    // retornamos los tickets
+    // paginacion y filtros (estado/pioridad/tipo)
+});
+
+
+// ruta para ticket por id
+router.get('/tickets/:id', verifyToken,  (req, res) => {
+    res.json({ message: 'Ruta para obtener un ticket por ID - en desarrollo' });
+    // obtener el ticket id
+    // llamamos al servicio
+    // obtenemos el ticket
+    // verificamos el rol del usuario
+    // dependiendo el rol mostramos mas o menos informacion
+});
+
+// ruta para revisar y editar un ticket por id
+// el usuario solicitante no puede editar el ticket despues de crearlo
+// el administrador puede cambiar cualquier campo del ticket
+// el caso de uso para un administrador es revisar un ticket para cambiar estado/pioridad/unidad y estado_revision = 1, por defecto en = 0
+// luego asignarselo un soporte encargado o dejarlo sin asignar
+router.put('/tickets/:id', verifyToken, checkRole(['administrador']), (req, res) => {
+    res.json({ message: 'Ruta para editar un ticket por ID - en desarrollo' });
+    // obtener el ticket id
+    // verificamos el rol del usuario
+    // dependiendo el rol permitimos editar ciertos campos
+    // llamamos al servicio
+    // actualizamos el ticket
+    // retornamos el ticket actualizado
+});
+
+// al terminar las anterior rutas, agregar las siguientes rutas:
+// ruta para asignarse un ticket sin asignar
+router.post('/tickets/:id/asignarse', verifyToken, checkRole(['soporte']), (req, res) => {
+    res.json({ message: 'Ruta para asignarse un ticket sin asignar - en desarrollo' });
+    // obtener el ticket id
+    // llamamos al servicio para crear el ticket detalle
+    // 
+});
+
+// ruta para agregar una obtervacion al ticket detalle
+router.post('/tickets/:id/detalle/observacion', verifyToken, checkRole(['soporte', 'administrador']), (req, res) => {
+    res.json({ message: 'Ruta para agregar una observación al ticket detalle - en desarrollo' });
+    // obtener el ticket id 
+    // llamamos al servicio para crear la observacion
+});
+
+// ruta para agregar un integrante al ticket detalle
+router.post('/tickets/:id/detalle/integrante', verifyToken, checkRole(['soporte', 'administrador']), (req, res) => {
+    res.json({ message: 'Ruta para agregar un integrante al ticket detalle - en desarrollo' });
+    // obtener el ticket id 
+    // llamamos al servicio para crear el integrante
+});
 
 /*
 // rutas para obtener los tipos: 

@@ -12,8 +12,6 @@ import type {
     GetUbicationType,
     GetUnityType
 } from '../../utils/types';
-import { ticketLogController } from '../ticketLog/ticketLog.controller';
-import type { TicketMovimientoCreateDTO } from '../../utils/interfaces';
 
 const log = logger.child({ service: 'ticketService' });
 
@@ -21,7 +19,7 @@ const log = logger.child({ service: 'ticketService' });
 
 export const ticketService = {
     createTicket: async (ticketObjeto: TicketCreateDTO): Promise<CreateTicketResult> => {
-        log.info({ action: 'createTicket', usuario_id_solicita: ticketObjeto.usuario_id_solicita }, 'Creando nuevo ticket');
+        log.info({ action: 'createTicketService', usuario_id_solicita: ticketObjeto.usuario_id_solicita }, 'Recibiendo datos del controller nuevo ticket');
         // primera parte, crea el ticket
         try {
             const [result] = await pool.query<ResultSetHeader>(
@@ -46,24 +44,7 @@ export const ticketService = {
             );
 
             const insertedId = result.insertId;
-            log.info({ ticket_id: insertedId }, 'Ticket creado correctamente');
-            // crear movimiento (llama al servicio directamente, NO al controlador)
-            const objetoMovimiento: TicketMovimientoCreateDTO = {
-                ticket_id: insertedId,
-                tipo_movimiento_id: 1,
-                usuario_id: ticketObjeto.usuario_id_solicita
-            }
-            const logResult = await ticketLogController.createTicketLog(objetoMovimiento);
-
-            if (logResult.status === 'error') {
-                log.error({ ticket_id: insertedId }, 'Error al crear el log del ticket')
-                // revertimos el ticket creado
-                await pool.query(`DELETE FROM ticket WHERE ticket_id = ?`, [insertedId]);
-                return { status: 'error', message: 'Error al crear el log del ticket, ticket revertido' };
-            } else {
-                log.info({ ticket_id: insertedId }, 'Log del ticket creado correctamente');
-            }
-
+            log.info({ ticket_id: insertedId }, 'Consulta SQL para crear ticket ejecutada correctamente');
             return { status: 'ok', ticket_id: insertedId };
         } catch (error) {
             log.error({ err: error }, 'Error al crear el ticket');
@@ -73,6 +54,17 @@ export const ticketService = {
             };
         }
     },
+    // por si se genera un error al crear un ticket
+    deleteTicketId: async (ticket_id: number): Promise<void> => {
+        log.info({ action: 'deleteTicketId', ticket_id  }, 'Eliminando ticket por ID');
+        try {
+            await pool.query(`DELETE FROM ticket WHERE ticket_id = ?`, [ticket_id]);
+            log.info({ ticket_id }, 'Ticket eliminado correctamente');
+        } catch (error) {
+            log.error({ err: error, ticket_id }, 'Error al eliminar el ticket');
+        }
+    },
+
     getTicket: async (ticketId: number): Promise<GetTicketResult> => {
         log.info({ action: 'getTicketById', ticketId }, 'Obteniendo ticket por ID');
 
@@ -100,30 +92,6 @@ export const ticketService = {
         } catch (err) {
             log.error({ err, ticketId }, 'Error al obtener el ticket de la base de datos');
             return { status: 'error', message: 'Error al obtener el ticket' };
-        }
-    },
-    createTicketLog: async (auditData: TicketMovimiento) => {
-        log.info({ action: 'createTicketLog', usuario_id: auditData.usuario_id }, 'Creando log de ticket');
-
-        try {
-            const [result] = await pool.query(
-                `INSERT INTO ticket_movimiento
-                    (ticket_id, usuario_id, tipo_movimiento_id, fecha) 
-                VALUES (?, ?, ?, NOW())`,
-                [
-                    auditData.ticket_id,
-                    auditData.usuario_id,
-                    auditData.tipo_movimiento_id,
-                ]
-            );
-
-            const insertedId = (result as any).insertId;
-
-            log.info({ ticket_log_id: insertedId }, 'Log de ticket creado correctamente');
-            return { status: 'ok', ticket_log_id: insertedId };
-        } catch (error) {
-            log.error({ err: error }, 'Error al crear el log de ticket');
-            return { status: 'error', message: 'Error al crear el log de ticket' };
         }
     },
     getAllTipoEstado: async (): Promise<GetAllTipoEstado> => {
@@ -271,6 +239,4 @@ export const ticketService = {
         }
 
     }
-
-
 };
