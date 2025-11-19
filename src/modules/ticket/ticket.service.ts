@@ -10,7 +10,8 @@ import type {
     GetOriginType,
     GetEventType,
     GetUbicationType,
-    GetUnityType
+    GetUnityType,
+    GetTicketsType
 } from '../../utils/types';
 
 const log = logger.child({ service: 'ticketService' });
@@ -56,7 +57,7 @@ export const ticketService = {
     },
     // por si se genera un error al crear un ticket
     deleteTicketId: async (ticket_id: number): Promise<void> => {
-        log.info({ action: 'deleteTicketId', ticket_id  }, 'Eliminando ticket por ID');
+        log.info({ action: 'deleteTicketId', ticket_id }, 'Eliminando ticket por ID');
         try {
             await pool.query(`DELETE FROM ticket WHERE ticket_id = ?`, [ticket_id]);
             log.info({ ticket_id }, 'Ticket eliminado correctamente');
@@ -64,8 +65,7 @@ export const ticketService = {
             log.error({ err: error, ticket_id }, 'Error al eliminar el ticket');
         }
     },
-
-    getTicket: async (ticketId: number): Promise<GetTicketResult> => {
+    getTicketId: async (ticketId: number): Promise<GetTicketResult> => {
         log.info({ action: 'getTicketById', ticketId }, 'Obteniendo ticket por ID');
 
         if (!ticketId || ticketId <= 0) {
@@ -134,7 +134,7 @@ export const ticketService = {
             }
 
             log.info('Tipos de prioridad obtenidos correctamente');
-            return { status: 'ok', priorities: prioridades };
+            return { status: 'ok', prioridades: prioridades };
         } catch (error) {
             log.error({ error }, 'Error al obtener los tipos de prioridad');
             return { status: 'error', message: 'Error al obtener los tipos de prioridad' };
@@ -238,5 +238,82 @@ export const ticketService = {
             return { status: 'error', message: 'error al obtener todas las unidades' }
         }
 
-    }
+    },
+    getAllTicket: async (userId: number, params: { page: number; limit: number; offset: number; filters: any }
+    ): Promise<GetTicketsType> => {
+
+
+        const { page, limit, offset, filters } = params;
+
+        log.info({ userId, filters, page, limit }, 'obteniendo tickets del usuario con filtros y paginación');
+
+        try {
+            const whereConditions = ["usuario_id_solicita = ?"];
+            const values: any[] = [userId];
+
+            if (filters.estado) {
+                whereConditions.push("tipo_estado_id = ?");
+                values.push(filters.estado);
+            }
+
+            if (filters.prioridad) {
+                whereConditions.push("tipo_prioridad_id = ?");
+                values.push(filters.prioridad);
+            }
+
+            if (filters.evento) {
+                whereConditions.push("tipo_evento_id = ?");
+                values.push(filters.evento);
+            }
+
+            if (filters.ubicacion) {
+                whereConditions.push("ubicacion_id = ?");
+                values.push(filters.ubicacion);
+            }
+
+            const whereSql = `WHERE ${whereConditions.join(" AND ")}`;
+
+            const [rows] = await pool.query(
+                `
+            SELECT
+                ticket_id,
+                asunto,
+                descripcion,
+                telefono,
+                autor_problema,
+                ubicacion_id,
+                tipo_estado_id,
+                tipo_prioridad_id,
+                tipo_evento_id
+            FROM ticket
+            ${whereSql}
+            ORDER BY ticket_id DESC
+            LIMIT ? OFFSET ?
+            `,
+                [...values, limit, offset]
+            );
+
+            const tickets = rows as Ticket[];
+
+            if (!tickets.length) {
+                log.warn({ userId }, 'no se encontraron tickets para este usuario');
+                return { status: 'empty' };
+            }
+
+            log.info(
+                { count: tickets.length, page, limit },
+                'tickets obtenidos correctamente para el usuario'
+            );
+
+            return {
+                status: 'ok', tickets: tickets, pagination: { page, limit, count: tickets.length }
+            };
+
+        } catch (error) {
+            log.error({ error, userId }, 'error al obtener los tickets');
+            return { status: 'error', message: 'error al obtener los tickets' };
+        }
+    },
+
+
 };

@@ -1,4 +1,4 @@
-import type { User, Ticket, UserWithRole, TipoEstado } from './interfaces';
+import type { User, Ticket, UserWithRole, TipoEstado, paginationInfo } from './interfaces';
 
 export type GetUserResult =
     | { status: 'ok'; user: User }
@@ -38,7 +38,7 @@ export type GetAllTipoEstado =
     | { status: 'error'; message: string };
 
 export type GetPriorityType =
-    | { status: 'ok'; priorities: any[] }
+    | { status: 'ok'; prioridades: any[] }
     | { status: 'empty' }
     | { status: 'error'; message: string };
 
@@ -59,5 +59,11 @@ export type GetUbicationType =
 
 export type GetUnityType =  
     | { status: 'ok'; unidades: any[] }
+    | { status: 'empty' }
+    | { status: 'error'; message: string }
+
+
+export type GetTicketsType =
+    | { status: 'ok'; tickets: any[]; pagination: paginationInfo}
     | { status: 'empty' }
     | { status: 'error'; message: string }

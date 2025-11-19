@@ -143,3 +143,9 @@ export interface TicketMovimientoCreateDTO {
     tipo_movimiento_id: number;
     usuario_id: number;
 }
+
+export interface paginationInfo{
+    page: number;
+    limit: number;
+    count: number;
+}

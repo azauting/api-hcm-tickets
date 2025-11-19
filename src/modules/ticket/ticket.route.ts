@@ -1,6 +1,6 @@
 import express from 'express';
 import { verifyToken } from '../../middlewares/verifyToken';
-import { createTicket} from './ticket.controller';
+import { createTicket, getTicketById, getTicketsType} from './ticket.controller';
 import { checkRole } from '../../middlewares/checkRole';
 const router = express.Router();
 
@@ -16,6 +16,18 @@ const router = express.Router();
 // ruta para crear un nuevo ticket 
 router.post('/tickets', verifyToken, createTicket)
 
+
+// ruta para obtener mis tickets
+
+// todo : falta agregar lo que ven los usuarios y los administradores/soporte
+router.get('/tickets/mis-tickets', verifyToken, getTicketsType)
+
+
+
+// ruta para ticket por id
+router.get('/tickets/:id', verifyToken, getTicketById)
+// dependiendo el rol mostramos mas o menos informacion
+
 // ruta para cancelar ticket antes de los 5 minutos
 router.delete('/tickets/:id', verifyToken, (req, res) => {
     res.json({ message: 'Ruta para cancelar un ticket - en desarrollo' });
@@ -26,15 +38,6 @@ router.delete('/tickets/:id', verifyToken, (req, res) => {
     // retornamos el resultado
 });
 
-// ruta para obtener mis tickets
-router.get('/tickets/mis-tickets', verifyToken, (req, res) => {
-    res.json({ message: 'Ruta para obtener mis tickets - en desarrollo' });
-    // obtener el usuario id del token
-    // llamamos al servicio
-    // obtenemos los tickets del usuario
-    // retornamos los tickets
-    // paginacion y filtros (estado/pioridad/tipo)
-});
 
 // ruta para ver los tickets por unidad 
 router.get('/tickets/unidad/:unidad_id', verifyToken, checkRole(['administrador', 'soporte']), (req, res) => {
@@ -48,15 +51,7 @@ router.get('/tickets/unidad/:unidad_id', verifyToken, checkRole(['administrador'
 });
 
 
-// ruta para ticket por id
-router.get('/tickets/:id', verifyToken,  (req, res) => {
-    res.json({ message: 'Ruta para obtener un ticket por ID - en desarrollo' });
-    // obtener el ticket id
-    // llamamos al servicio
-    // obtenemos el ticket
-    // verificamos el rol del usuario
-    // dependiendo el rol mostramos mas o menos informacion
-});
+
 
 // ruta para revisar y editar un ticket por id
 // el usuario solicitante no puede editar el ticket despues de crearlo
