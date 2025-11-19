@@ -7,6 +7,7 @@ import type { TicketCreateDTO } from '../../utils/interfaces';
 import { ticketLogController } from '../ticketLog/ticketLog.controller';
 import type { TicketMovimientoCreateDTO } from '../../utils/interfaces';
 import { sendResponse } from '../../utils/helper';
+import type { CancelTicketResult } from '../../utils/types';
 
 const log = logger.child({ ubicacion: 'ticketController' });
 
@@ -116,7 +117,7 @@ const getStatusType = async (req: Request, res: Response) => {
         return sendResponse(res, 404, "no se encontraron tipos de estado registrados")
     }
 
-    // status === 'ok'
+
     return sendResponse(res, 200, "tipos de estado obtenidos correctamente", { estados: result.estados })
 };
 //metodos para obtener todos los tipos de prioridad
@@ -278,4 +279,36 @@ const getTicketById = async (req: AuthRequest, res: Response) => {
     }
     return sendResponse(res, 200, 'Ticket obtenido correctamente', { ticket: filteredTicket });
 };
-export { createTicket, getStatusType, getPriorityType, getOriginType, getEventType, getLocationType, getUnityType, getTicketsType, getTicketById };
+
+const cancelTicket = async (req: AuthRequest, res: Response) => {
+    const ticketId = Number(req.params.id);
+    const userId = req.user!.id;
+
+    log.info({ ticketId, userId }, 'Solicitando cancelación del ticket');
+
+    if (!ticketId || ticketId <= 0) {
+        return sendResponse(res, 400, 'ID de ticket inválido');
+    }
+
+
+    const result = await ticketService.cancelTicketById(ticketId, userId);
+
+    // forbidden es para cuando el usuario no es el creador del ticket
+    if (result.status === 'forbidden') {
+        return sendResponse(res, 403, result.message);
+    }
+
+    if (result.status === 'tiempo expirado') {
+        return sendResponse(res, 400, result.message);
+    }
+
+    if (result.status === 'error') {
+        return sendResponse(res, 500, result.message || 'Error al cancelar ticket');
+    }
+
+    return sendResponse(res, 200, 'Ticket cancelado correctamente');
+};
+
+
+
+export { createTicket, getStatusType, getPriorityType, getOriginType, getEventType, getLocationType, getUnityType, getTicketsType, getTicketById, cancelTicket };

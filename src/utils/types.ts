@@ -67,3 +67,9 @@ export type GetTicketsType =
     | { status: 'ok'; tickets: any[]; pagination: paginationInfo}
     | { status: 'empty' }
     | { status: 'error'; message: string }
+
+export type CancelTicketResult =
+    | { status: 'ok' }
+    | { status: 'error'; message: string }
+    | { status: 'forbidden'; message: string }
+    | { status: 'tiempo expirado'; message: string };

@@ -11,7 +11,8 @@ import type {
     GetEventType,
     GetUbicationType,
     GetUnityType,
-    GetTicketsType
+    GetTicketsType,
+    CancelTicketResult
 } from '../../utils/types';
 
 const log = logger.child({ service: 'ticketService' });
@@ -312,6 +313,53 @@ export const ticketService = {
         } catch (error) {
             log.error({ error, userId }, 'error al obtener los tickets');
             return { status: 'error', message: 'error al obtener los tickets' };
+        }
+    },
+    cancelTicketById: async (ticketId: number, userId: number): Promise<CancelTicketResult> => {
+        try {
+            // 1. Obtener ticket
+            const [rows] = await pool.query(
+                `SELECT ticket_id, usuario_id_solicita,
+                    (SELECT fecha FROM ticket_movimiento 
+                    WHERE ticket_id = ? 
+                    ORDER BY fecha ASC LIMIT 1) AS fecha_creacion
+                    FROM ticket
+                    WHERE ticket_id = ?`,
+                [ticketId, ticketId]
+            );
+
+            const ticket = (rows as any)[0];
+
+            if (!ticket) {
+                return { status: "error", message: "Ticket no encontrado" };
+            }
+
+            // Validar userId
+            if (ticket.usuario_id_solicita !== userId) {
+                return { status: "forbidden", message: "No puedes cancelar un ticket que no creaste" };
+            }
+
+            // Verificar tiempo (5 minutos)
+            const fechaCreacion = new Date(ticket.fecha_creacion);
+            const ahora = new Date();
+            const minutos = (ahora.getTime() - fechaCreacion.getTime()) / 1000 / 60;
+
+            // si pasaron más de 5 minutos ya no se puede cancelar el ticket
+            if (minutos > 5) {
+                return { status: "tiempo expirado", message: "Ya no puedes cancelar el ticket (pasaron más de 5 minutos)" };
+            }
+
+            // ELIMINAR PRIMERO ticket_movimiento
+            await pool.query(`DELETE FROM ticket_movimiento WHERE ticket_id = ?`, [ticketId]);
+
+            // ELIMINAR ticket
+            await pool.query(`DELETE FROM ticket WHERE ticket_id = ?`, [ticketId]);
+
+            return { status: "ok" };
+
+        } catch (error) {
+            log.error({ err: error, ticketId, userId }, 'Error al cancelar el ticket');
+            return { status: "error", message: "Error al cancelar el ticket" };
         }
     },
 

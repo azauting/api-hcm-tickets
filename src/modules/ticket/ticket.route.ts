@@ -1,6 +1,6 @@
 import express from 'express';
 import { verifyToken } from '../../middlewares/verifyToken';
-import { createTicket, getTicketById, getTicketsType} from './ticket.controller';
+import { cancelTicket, createTicket, getTicketById, getTicketsType} from './ticket.controller';
 import { checkRole } from '../../middlewares/checkRole';
 const router = express.Router();
 
@@ -29,14 +29,8 @@ router.get('/tickets/:id', verifyToken, getTicketById)
 // dependiendo el rol mostramos mas o menos informacion
 
 // ruta para cancelar ticket antes de los 5 minutos
-router.delete('/tickets/:id', verifyToken, (req, res) => {
-    res.json({ message: 'Ruta para cancelar un ticket - en desarrollo' });
-    // obtener el ticket id
-    // obtenemos el momento de creacion del ticket para verificar si es dentro de los 5 minutos
-    // si es dentro de los 5 minutos
-    // llamamos al servicio para eliminar el ticket
-    // retornamos el resultado
-});
+router.delete('/tickets/:id',verifyToken,cancelTicket)
+
 
 
 // ruta para ver los tickets por unidad 
