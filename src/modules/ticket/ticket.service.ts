@@ -1,19 +1,15 @@
-import type { Ticket, TicketCreateDTO, TicketMovimiento, ticketDetalleAsignar TipoEstado } from '../../utils/interfaces';
+import type { Ticket, TicketCreateDTO, TicketDetalleObservacion, TicketMovimiento, TipoEstado, TipoEvento, TipoOrigen, TipoPrioridad, TipoUnidad, Ubicacion, ticketDetalleAsignar, TicketDetalle } from '../../utils/interfaces';
 import type { ResultSetHeader } from 'mysql2';
 import pool from '../../config/db.config';
 import { logger } from '../../utils/logger';
 import type {
     CreateTicketResult,
     GetTicketResult,
-    GetAllTipoEstado,
-    GetPriorityType,
-    GetOriginType,
-    GetEventType,
-    GetUbicationType,
-    GetUnityType,
     GetTicketsType,
-    CancelTicketResult
+    CancelTicketResult,
+    ApiResponse
 } from '../../utils/types';
+import { startTransition } from 'react';
 
 const log = logger.child({ service: 'ticketService' });
 
@@ -46,6 +42,8 @@ export const ticketService = {
             );
 
             const insertedId = result.insertId;
+
+
             log.info({ ticket_id: insertedId }, 'Consulta SQL para crear ticket ejecutada correctamente');
             return { status: 'ok', ticket_id: insertedId };
         } catch (error) {
@@ -56,6 +54,110 @@ export const ticketService = {
             };
         }
     },
+    createTicketDetalle: async (ticketId: number): Promise<ApiResponse<TicketDetalle>> => {
+        try {
+            const [result] = await pool.query<ResultSetHeader>(
+                `INSERT INTO ticket_detalle (ticket_id, respuesta, soporte_asignado)
+                VALUES (?, '', NULL)`,
+                [ticketId]
+            );
+
+            return {
+                status: 'ok',
+                data: [{
+                    ticket_detalle_id: result.insertId,
+                    ticket_id: ticketId,
+                    respuesta: '',
+                    soporte_asignado: null
+                }]
+            };
+
+        } catch (error) {
+            return { status: 'error', message: 'Error al crear ticket_detalle' };
+        }
+    },
+    ticketObservation: async (ticketId: number, observacion: string, userId: number): Promise<ApiResponse<TicketDetalleObservacion>> => {
+
+        try {
+            // Verificar si existe ticket_detalle para ese ticket
+            const [detalleRows] = await pool.query(
+                `SELECT ticket_detalle_id 
+                FROM ticket_detalle 
+                WHERE ticket_id = ?`,
+                [ticketId]
+            );
+
+            const detalle = (detalleRows as any)[0];
+
+            if (!detalle) {
+                return { status: 'error', message: 'El ticket no tiene un detalle asociado' };
+            }
+
+            //insertar la observacion
+            const [insertResult] = await pool.query<ResultSetHeader>(
+                `INSERT INTO ticket_detalle_observacion 
+                (ticket_detalle_id, observacion, usuario_id)
+                VALUES (?, ?, ?)`,
+                [detalle.ticket_detalle_id, observacion, userId]
+            );
+
+            const newObservation: TicketDetalleObservacion = {
+                ticket_detalle_observacion_id: insertResult.insertId,
+                ticket_detalle_id: detalle.ticket_detalle_id,
+                observacion,
+                usuario_id: userId
+            };
+
+
+            return { status: 'ok', data: [newObservation] };
+
+
+        } catch (error) {
+            log.error({ error }, 'Error al agregar observación al ticket detalle');
+            return { status: 'error', message: 'Error al agregar la observación' };
+
+        }
+    },
+    // se elimina el ticket completo junto con sus detalles, observaciones e integrantes automáticamente
+    deleteTicketCompleto: async (ticketId: number): Promise<void> => {
+        try {
+            // 1. obtener ticket_detalle_id asociados
+            const [rows] = await pool.query(
+                `SELECT ticket_detalle_id FROM ticket_detalle WHERE ticket_id = ?`,
+                [ticketId]
+            );
+
+            const detalles = rows as { ticket_detalle_id: number }[];
+
+            // 2. borrar observaciones
+            if (detalles.length > 0) {
+                const ids = detalles.map(d => d.ticket_detalle_id);
+
+                await pool.query(
+                    `DELETE FROM ticket_detalle_observacion WHERE ticket_detalle_id IN (?)`,
+                    [ids]
+                );
+
+                await pool.query(
+                    `DELETE FROM ticket_detalle_integrante WHERE ticket_detalle_id IN (?)`,
+                    [ids]
+                );
+            }
+
+            // 3. borrar detalle
+            await pool.query(`DELETE FROM ticket_detalle WHERE ticket_id = ?`, [ticketId]);
+
+            // 4. borrar movimientos
+            await pool.query(`DELETE FROM ticket_movimiento WHERE ticket_id = ?`, [ticketId]);
+
+            // 5. borrar ticket
+            await pool.query(`DELETE FROM ticket WHERE ticket_id = ?`, [ticketId]);
+
+        } catch (error) {
+            log.error({ error, ticketId }, "Error en deleteTicketCompleto");
+        }
+    },
+
     // check: cancelacion de ticket - pendiente a revision
     cancelTicketById: async (ticketId: number, userId: number): Promise<CancelTicketResult> => {
         try {
@@ -127,9 +229,82 @@ export const ticketService = {
             log.info({ ticketId }, 'Ticket obtenido correctamente');
             return { status: 'ok', ticket };
 
-        } catch (err) {
-            log.error({ err, ticketId }, 'Error al obtener el ticket de la base de datos');
+        } catch (error) {
+            log.error({ error, ticketId }, 'Error al obtener el ticket de la base de datos');
             return { status: 'error', message: 'Error al obtener el ticket' };
+        }
+    },
+    // check : obtener todos mis tickets 
+    getAllTicket: async (userId: number, params: { page: number; limit: number; offset: number; filters: any }): Promise<GetTicketsType> => {
+
+        const { page, limit, offset, filters } = params;
+
+        log.info({ userId, filters, page, limit }, 'obteniendo tickets del usuario con filtros y paginación');
+
+        try {
+            const whereConditions = ["usuario_id_solicita = ?"];
+            const values: any[] = [userId];
+
+            // filtros
+            if (filters.estado) {
+                whereConditions.push("tipo_estado_id = ?");
+                values.push(filters.estado);
+            }
+
+            if (filters.prioridad) {
+                whereConditions.push("tipo_prioridad_id = ?");
+                values.push(filters.prioridad);
+            }
+
+            if (filters.evento) {
+                whereConditions.push("tipo_evento_id = ?");
+                values.push(filters.evento);
+            }
+
+            if (filters.ubicacion) {
+                whereConditions.push("ubicacion_id = ?");
+                values.push(filters.ubicacion);
+            }
+
+            const whereSql = `WHERE ${whereConditions.join(" AND ")}`;
+
+            const [rows] = await pool.query(
+                `
+                SELECT
+                    ticket_id,
+                    asunto,
+                    descripcion,
+                    telefono,
+                    autor_problema,
+                    ubicacion_id,
+                    tipo_estado_id,
+                    tipo_prioridad_id,
+                    tipo_evento_id
+                FROM ticket
+                ${whereSql}
+                ORDER BY ticket_id DESC
+                LIMIT ? OFFSET ?
+            `,
+                [...values, limit, offset]
+            );
+
+            const tickets = rows as Ticket[];
+
+            if (!tickets.length) {
+                log.warn({ userId }, 'no se encontraron tickets para este usuario');
+                return { status: 'empty' };
+            }
+
+            log.info(
+                { count: tickets.length, page, limit },
+                'tickets obtenidos correctamente para el usuario'
+            );
+
+            return {status: 'ok',tickets,pagination: { page, limit, count: tickets.length }};
+
+        } catch (error) {
+            log.error({ error, userId }, 'error al obtener los tickets');
+            return { status: 'error', message: 'error al obtener los tickets' };
         }
     },
     // check: admin revisa el ticket - en desarrollo
@@ -150,62 +325,71 @@ export const ticketService = {
             }
             // todo ok
             return { status: 'ok' };
-        } catch (err) {
-            log.error({ err, ticketId, updateData }, 'Error en updateTicketAdmin');
+        } catch (error) {
+            log.error({ error, ticketId, updateData }, 'Error en updateTicketAdmin');
             return { status: 'error', message: 'No se pudo actualizar el ticket' };
         }
     },
     // check: asignar ticket a soporte - en desarrollo
-    assignTicket: async (objetoAsignacion: ticketDetalleAsignar) => {
+    assignTicket: async (ticket_id: number, soporte_asignado: number) => {
         try {
-            // CREAMOS TICKET DETALLE
-            const [result] = await pool.query<ResultSetHeader>(
-                `INSERT INTO ticket_detalle (ticket_id, soporte_asignado) VALUES (?, ?)`,
-                [
-                    objetoAsignacion.ticket_id,
-                    objetoAsignacion.soporte_asignado
-                ]
+            const [rows] = await pool.query(
+                `SELECT ticket_detalle_id FROM ticket_detalle WHERE ticket_id = ?`,
+                [ticket_id]
             );
-            const insertedId = result.insertId;
-            log.info({ ticket_detalle_id: insertedId }, 'Soporte asignado al ticket correctamente');
-            return { status: 'ok', ticket_detalle_id: insertedId };
+
+            const detalle = (rows as any)[0];
+
+            if (!detalle) {
+                return {
+                    status: 'not_found',
+                    message: 'El ticket no tiene un detalle creado'
+                };
+            }
+
+            const [update] = await pool.query<ResultSetHeader>(
+                `UPDATE ticket_detalle
+                SET soporte_asignado = ?
+                WHERE ticket_id = ?`,
+                [soporte_asignado, ticket_id]
+            );
+
+            if (update.affectedRows === 0) {
+                return {status: 'error',message: 'No se pudo asignar el ticket'};}
+
+            return {status: 'ok',ticket_detalle_id: detalle.ticket_detalle_id,soporte_asignado};
+
         } catch (error) {
-            log.error({ err: error, objetoAsignacion }, 'Error al asignar el ticket');
-            return {
-                status: 'error',
-                message: 'Error al asignar el ticket'
-            };
+            log.error({ error, ticket_id, soporte_asignado }, 'Error al asignar soporte');
+            return {status: 'error', message: 'Error interno al asignar soporte'};
         }
     },
-};
-// services para obtener los tipos de ticket - en desarrollo
-/*
- getAllTipoEstado: async (): Promise<GetAllTipoEstado> => {
+
+    // TODO :SERVICES PARA LOS ESTADOS, PRIORIDADES, ORIGEN, EVENTO, UNIDAD, UBICACION
+    getAllTipoEstado: async (): Promise<ApiResponse<TipoEstado>> => {
         log.info({ action: 'getAllTipoEstado' }, 'Obteniendo todos los tipos de estado');
 
         try {
             const [rows] = await pool.query(
                 `SELECT tipo_estado_id, estado FROM tipo_estado`
-            )
+            );
 
             const estados = rows as TipoEstado[];
 
-            // si no hay estados, retornar vacío
             if (!estados.length) {
                 log.warn('No se encontraron tipos de estado');
                 return { status: 'empty' };
             }
+
             log.info('Tipos de estado obtenidos correctamente');
-            return { status: 'ok', estados };
-
-
+            return { status: 'ok', data: estados };
 
         } catch (error) {
             log.error({ err: error }, 'Error al obtener los tipos de estado');
             return { status: 'error', message: 'Error al obtener los tipos de estado' };
         }
     },
-    getAllTipoPrioridad: async (): Promise<GetPriorityType> => {
+    getAllTipoPrioridad: async (): Promise<ApiResponse<TipoPrioridad>> => {
         log.info({ action: 'getAllTipoPrioridad' }, 'Obteniendo todas las prioridades');
 
         try {
@@ -220,13 +404,13 @@ export const ticketService = {
             }
 
             log.info('Tipos de prioridad obtenidos correctamente');
-            return { status: 'ok', prioridades: prioridades };
+            return { status: 'ok', data: prioridades };
         } catch (error) {
-            log.error({ error }, 'Error al obtener los tipos de prioridad');
+            log.error({ err: error }, 'Error al obtener los tipos de prioridad');
             return { status: 'error', message: 'Error al obtener los tipos de prioridad' };
         }
     },
-    getAllTipoOrigen: async (): Promise<GetOriginType> => {
+    getAllTipoOrigen: async (): Promise<ApiResponse<TipoOrigen>> => {
         log.info({ action: 'getAllTipoOrigen' }, 'Obteniendo todos los tipos de origen');
 
         try {
@@ -242,14 +426,14 @@ export const ticketService = {
             }
 
             log.info('Tipos de origen obtenidos correctamente');
-            return { status: 'ok', origen };
+            return { status: 'ok', data: origen };
 
         } catch (error) {
             log.error({ err: error }, 'Error al obtener los tipos de origen');
             return { status: 'error', message: 'Error al obtener los tipos de origen' };
         }
     },
-    getAllTipoEvento: async (): Promise<GetEventType> => {
+    getAllTipoEvento: async (): Promise<ApiResponse<TipoEvento>> => {
         log.info({ action: 'GetAlltipoEvento' }, 'Obteniendo todos los tipos de evento');
 
         try {
@@ -265,14 +449,14 @@ export const ticketService = {
             }
 
             log.info('tipo de evento obtenido correctamente')
-            return { status: 'ok', eventos }
+            return { status: 'ok', data: eventos }
 
         } catch (error) {
             log.error({ err: error }, 'Error al obtener los tipos de evento');
             return { status: 'error', message: 'Error al obtener los tipos de evento' };
         }
     },
-    getAllUbicacion: async (): Promise<GetUbicationType> => {
+    getAllUbicacion: async (): Promise<ApiResponse<Ubicacion>> => {
         log.info([{ action: 'GetAllUbicacion' }], 'obteniendo todas las ubicaciones')
 
 
@@ -293,7 +477,7 @@ export const ticketService = {
             }
 
             log.info('ubicaciones obtenidas correctamente')
-            return { status: 'ok', ubicaciones }
+            return { status: 'ok', data: ubicaciones }
 
         } catch (error) {
             log.error({ err: error }, 'error al obtener las ubicaciones');
@@ -301,23 +485,20 @@ export const ticketService = {
         }
 
     },
-    getAllUnidad: async (): Promise<GetUnityType> => {
+    getAllUnidad: async (): Promise<ApiResponse<TipoUnidad>> => {
         log.info({ action: 'GetAllUnidad' }, 'obteniendo todos los tipos de unidad')
 
         try {
             const [rows] = await pool.query('SELECT unidad_id,tipo_unidad FROM tipo_unidad')
 
-            const unidades = rows as {
-                unidad_id: number,
-                tipo_unidad: string;
-            }[];
+            const unidades = rows as { unidad_id: number, tipo_unidad: string; }[];
 
             if (!unidades.length) {
                 log.warn('no se encontraron las unidades')
                 return { status: 'empty' }
             }
             log.info('ubicaciones obtenidas correctamente')
-            return { status: 'ok', unidades };
+            return { status: 'ok', data: unidades };
 
         } catch (error) {
             log.error({ err: error }, 'error al obtener las unidades')
@@ -325,4 +506,9 @@ export const ticketService = {
         }
 
     },
-*/
+
+
+
+
+
+}

@@ -20,17 +20,32 @@ export interface TipoRol {
 
 export interface TipoUnidad {
     unidad_id: number;
-    tipo_unidad: 'soporte' | 'infraestructura' | 'desarrollo';
+    tipo_unidad: string;
 }
 
 export interface TipoEstado {
     tipo_estado_id: number;
-    estado: 'abierto' | 'en_proceso' | 'en_pausa' | 'cancelado' | 'cerrado';
+    estado: string;
 }
 
 export interface TipoPrioridad {
     tipo_prioridad_id: number;
-    prioridad: 'baja' | 'media' | 'alta';
+    prioridad: string;
+}
+
+export interface TipoOrigen {
+    tipo_origen_id: number;
+    origen: string;
+}
+
+export interface TipoEvento {
+    tipo_evento_id: number;
+    evento: string;
+}
+
+export interface Ubicacion {
+    ubicacion_id: number;
+    ubicacion: string;
 }
 
 // Ticket principal
@@ -56,7 +71,7 @@ export interface TicketDetalle {
     ticket_detalle_id: number;
     ticket_id: number;
     respuesta: string;
-    soporte_asignado: number;
+    soporte_asignado: number | null;
 }
 
 export interface TicketDetalleObservacion {

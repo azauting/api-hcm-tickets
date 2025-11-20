@@ -53,6 +53,15 @@ export const ticketController = {
 
         // sexto paso, obtener el id del ticket creado y registrar el movimiento en la auditoria
         const ticket_id = result.ticket_id;
+        // crear ticket_detalle automáticamente
+        const detalle = await ticketService.createTicketDetalle(ticket_id);
+
+        // si hay un error al crear el ticket detalle, eliminamos el ticket automáticamente
+        if (detalle.status === 'error') {
+            await ticketService.deleteTicketCompleto(ticket_id);
+            return sendResponse(res, 500, 'Error al crear ticket_detalle');
+        }
+
 
         log.info({ usuario_id_solicita, ticket_id }, 'Ticket creado');
 
@@ -103,44 +112,49 @@ export const ticketController = {
 
         return sendResponse(res, 200, 'Ticket actualizado correctamente', { message: logResult.message });
     },
-    // check: controller para que el administrador asigne a un soporte o el soporte se asigne un ticket sin asignar - en desarrollo
-    /*
-       TICKET_DETALLE {
-        int ticket_detalle_id PK
-        int ticket_id FK
-        varchar respuesta
-        int soporte_asignado FK
-    */
+    
     assignTicket: async (req: AuthRequest, res: Response) => {
-        const ticketId = parseIdParam(req.params.id);
+        const ticketId = Number(req.params.id);
         const usuario_id = req.user!.id;
-        log.info({ ticketId, usuario_id }, 'Recibiendo data para asignar ticket');
+        const rol = req.user!.tipo_rol;
 
         if (!ticketId || ticketId <= 0) {
             return sendResponse(res, 400, 'ID de ticket inválido');
         }
-        // creamos un objeto con la informacion para asignar el ticket
-        const objetoAsignacion: ticketDetalleAsignar = {
-            ticket_id: ticketId,
-            soporte_asignado: usuario_id,
-        };
-        const result = await ticketService.assignTicket(objetoAsignacion);
+
+        let soporteAsignado: number;
+
+        if (rol === 'administrador') {
+            const { soporte_id } = req.body;
+            soporteAsignado = soporte_id  // autoasignar si no envía otro id
+        } else if (rol === 'soporte') {
+            soporteAsignado = usuario_id; // solo autasignación
+        } else {
+            return sendResponse(res, 403, 'No tienes permisos para asignar tickets');
+        }
+
+        const result = await ticketService.assignTicket(ticketId, soporteAsignado);
+
         if (result.status === 'not_found') {
-            return sendResponse(res, 404, result.message!);
+            return sendResponse(res, 404, result.message ?? 'Ticket no encontrado');
         }
+
         if (result.status === 'error') {
-            return sendResponse(res, 500, result.message!);
+            return sendResponse(res, 500, result.message ?? 'Error al asignar ticket');
         }
-        // luego de asignar el ticket, registramos el movimiento en la auditoria
-        const objetoMovimiento: TicketMovimientoCreateDTO = {
+
+        await ticketLogController.createTicketLog({
             ticket_id: ticketId,
-            tipo_movimiento_id: 3, // ticket asignado a soporte // estos codigos de movimiento pueden cambiar en el futuro 
-            usuario_id: usuario_id,
-        };
-        const logResult = await ticketLogController.createTicketLog(objetoMovimiento);
-        log.info({ ticketId }, 'Log del ticket asignado correctamente');    
-        return sendResponse(res, 200, 'Ticket asignado correctamente', { message: logResult.message });
+            tipo_movimiento_id: 3,
+            usuario_id
+        });
+
+        return sendResponse(res, 200, 'Ticket asignado correctamente', {
+            ticket_detalle_id: result.ticket_detalle_id,
+            soporte_asignado: soporteAsignado
+        });
     },
+
     getTicketById: async (req: AuthRequest, res: Response) => {
         const ticketId = Number(req.params.id);
         const userId = req.user!.id;
@@ -184,6 +198,28 @@ export const ticketController = {
         }
         return sendResponse(res, 200, 'Ticket obtenido correctamente', { ticket: filteredTicket });
     },
+    addTicketObservation: async (req: AuthRequest, res: Response) => {
+        const ticketId = Number(req.params.id);
+        const userId = req.user!.id;
+        const { observacion } = req.body;
+
+        if (!observacion || typeof observacion !== 'string') {
+            return sendResponse(res, 400, 'La observación es requerida');
+        }
+
+        const result = await ticketService.ticketObservation(ticketId, observacion, userId);
+
+        if (result.status === 'empty') {
+            return sendResponse(res, 404, 'El ticket no tiene un detalle asociado');
+        }
+
+        if (result.status === 'error') {
+            return sendResponse(res, 500, result.message);
+        }
+
+        return sendResponse(res, 200, 'Observación agregada correctamente', result.data[0]
+        );
+    },
     cancelTicket: async (req: AuthRequest, res: Response) => {
         const ticketId = Number(req.params.id);
         const userId = req.user!.id;
@@ -212,131 +248,7 @@ export const ticketController = {
 
         return sendResponse(res, 200, 'Ticket cancelado correctamente');
     },
-    // check: controller para obtener mis tickets - en desarrollo
-    getMyTickets: async (req: AuthRequest, res: Response) => {
-        const userId = req.user!.id;
-        log.info({ userId }, 'obteniendo tickets del usuario');
-    },
-};
-
-
-
-
-
-/* EN CONSTRUCCION */
-
-// metodo para obtener todos los tipos
-/*const getTicketTypes = async (req: Request, res: Response) => {
-    const type = req.params.type;
-    const result = await ticketService.getAllTicketTypes();
-    if (result.status === 'error') {
-        return res.status(500).json({ message: result.message });
-    }
-    if (result.status === 'empty') {
-        return res.status(404).json({ message: 'No se encontraron tipos de ticket' });
-    }
-    return res.status(200).json({
-        message: 'Tipos de ticket obtenidos correctamente',
-        data: result.tipos,
-    });
-}; */
-
-
-// controller tipos
-/*
-    // metodo para obtener todos los tipos de estado
-    getStatusType: async (req: Request, res: Response) => {
-
-        const result = await ticketService.getAllTipoEstado();
-
-        if (result.status === 'error') {
-            return sendResponse(res, 500, result.message)
-        }
-
-        if (result.status === 'empty') {
-            return sendResponse(res, 404, "no se encontraron tipos de estado registrados")
-        }
-
-
-        return sendResponse(res, 200, "tipos de estado obtenidos correctamente", { estados: result.estados })
-    },
-    //metodos para obtener todos los tipos de prioridad
-    getPriorityType: async (req: Request, res: Response) => {
-
-        const result = await ticketService.getAllTipoPrioridad();
-
-        if (result.status === 'empty') {
-            return sendResponse(res, 404, "no se encontraron tipos de prioridad")
-        }
-
-        if (result.status === 'error') {
-            return sendResponse(res, 500, "error al obtener los tipos de prioridad")
-        }
-
-        return sendResponse(res, 200, "tipos de prioridad obtenidos correctamente", { prioiridades: result.prioridades })
-
-    },
-    // metodo para obtener todos los tipos de origen
-    getOriginType: async (req: Request, res: Response) => {
-        const result = await ticketService.getAllTipoOrigen();
-
-        if (result.status === 'empty') {
-            return sendResponse(res, 404, "no se encontraron tipos de origen")
-        }
-
-        if (result.status === 'error') {
-
-            return sendResponse(res, 500, "error al obtener los tipos de origen")
-
-        }
-
-
-        return sendResponse(res, 200, "tipos de origen obtenidos correctamente", { origen: result.origen })
-    },
-
-    getEventType: async (req: Request, res: Response) => {
-        const result = await ticketService.getAllTipoEvento();
-
-        if (result.status === 'empty') {
-            return sendResponse(res, 404, "no se encontraron tipos de eventos")
-        }
-
-        if (result.status === 'error') {
-            return sendResponse(res, 500, result.message)
-        }
-
-        return sendResponse(res, 200, "tipos de eventos obtenidos correctamente", { eventos: result.eventos });
-    },
-    getLocationType: async (req: Request, res: Response) => {
-        const result = await ticketService.getAllUbicacion();
-
-        if (result.status === 'empty') {
-            return sendResponse(res, 404, "no se encontraron las ubicaciones")
-        }
-
-        if (result.status === 'error') {
-            return sendResponse(res, 500, result.message)
-        }
-
-        return sendResponse(res, 200, 'ubicaciones obtenidas correctamente', { ubicaciones: result.ubicaciones });
-    },
-
-    const getUnityType = async (req: Request, res: Response) => {
-        const result = await ticketService.getAllUnidad();
-
-        if (result.status === 'empty') {
-
-            return sendResponse(res, 404, "no se encontraron tipos de unidad")
-        }
-
-        if (result.status === 'error') {
-            return sendResponse(res, 500, result.message)
-        }
-
-
-        return sendResponse(res, 200, 'Tipos de unidad obtenidos correctamente', { unidades: result.unidades });
-    },
-    getTicketsType: async (req: AuthRequest, res: Response) => {
+    getTickets: async (req: AuthRequest, res: Response) => {
 
         const userId = req.user!.id;
         log.info({ userId }, 'obteniendo tickets del usuario');
@@ -368,4 +280,131 @@ export const ticketController = {
 
         return sendResponse(res, 200, 'Tickets obtenidos correctamente', { tickets: result.tickets });
     },
+    getStatusType: async (req: Request, res: Response) => {
+        const result = await ticketService.getAllTipoEstado();
+
+        if (result.status === 'empty') {
+            return sendResponse(res, 404, "no se encontraron tipos de estado registrados");
+        }
+
+        if (result.status === 'error') {
+            return sendResponse(res, 500, "error al obtener los tipos de estado");
+        }
+
+
+        return sendResponse(res, 200, "Tipos de estado obtenidos correctamente", { estados: result.data });
+    },
+    getPriorityType: async (req: Request, res: Response) => {
+
+        const result = await ticketService.getAllTipoPrioridad();
+
+        if (result.status === 'empty') {
+            return sendResponse(res, 404, "no se encontraron tipos de prioridad")
+        }
+
+        if (result.status === 'error') {
+            return sendResponse(res, 500, "error al obtener los tipos de prioridad")
+        }
+
+        return sendResponse(res, 200, "tipos de prioridad obtenidos correctamente", { prioridades: result.data })
+    },
+    getOriginType: async (req: Request, res: Response) => {
+        const result = await ticketService.getAllTipoOrigen();
+
+        if (result.status === 'empty') {
+            return sendResponse(res, 404, "no se encontraron tipos de origen")
+        }
+
+        if (result.status === 'error') {
+
+            return sendResponse(res, 500, "error al obtener los tipos de origen")
+
+        }
+        return sendResponse(res, 200, "tipos de origen obtenidos correctamente", { origen: result.data })
+    },
+    getEventType: async (req: Request, res: Response) => {
+        const result = await ticketService.getAllTipoEvento();
+
+        if (result.status === 'empty') {
+            return sendResponse(res, 404, "no se encontraron tipos de eventos")
+        }
+
+        if (result.status === 'error') {
+            return sendResponse(res, 500, result.message)
+        }
+
+        return sendResponse(res, 200, "tipos de eventos obtenidos correctamente", { eventos: result.data });
+    },
+    getLocationType: async (req: Request, res: Response) => {
+        const result = await ticketService.getAllUbicacion();
+
+        if (result.status === 'empty') {
+            return sendResponse(res, 404, "no se encontraron las ubicaciones")
+        }
+
+        if (result.status === 'error') {
+            return sendResponse(res, 500, result.message)
+        }
+
+        return sendResponse(res, 200, 'ubicaciones obtenidas correctamente', { ubicaciones: result.data });
+    },
+    getUnityType: async (req: Request, res: Response) => {
+        const result = await ticketService.getAllUnidad();
+
+        if (result.status === 'empty') {
+
+            return sendResponse(res, 404, "no se encontraron tipos de unidad")
+        }
+
+        if (result.status === 'error') {
+            return sendResponse(res, 500, result.message)
+        }
+
+
+        return sendResponse(res, 200, 'Tipos de unidad obtenidos correctamente', { unidades: result.data });
+    },
+
+
+
+}
+
+
+
+
+
+/* EN CONSTRUCCION */
+
+// metodo para obtener todos los tipos
+/*const getTicketTypes = async (req: Request, res: Response) => {
+    const type = req.params.type;
+    const result = await ticketService.getAllTicketTypes();
+    if (result.status === 'error') {
+        return res.status(500).json({ message: result.message });
+    }
+    if (result.status === 'empty') {
+        return res.status(404).json({ message: 'No se encontraron tipos de ticket' });
+    }
+    return res.status(200).json({
+        message: 'Tipos de ticket obtenidos correctamente',
+        data: result.tipos,
+    });
+}; */
+
+
+// controller tipos
+/*
+
+    
+    //metodos para obtener todos los tipos de prioridad
+    
+    // metodo para obtener todos los tipos de origen
+    
+
+
+    
+
+
+
+    
+    
 */

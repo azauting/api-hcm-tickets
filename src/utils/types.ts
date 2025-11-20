@@ -1,9 +1,10 @@
 import type { User, Ticket, UserWithRole, TipoEstado, paginationInfo } from './interfaces';
 
-export type ApiResponse<T = unknown> =
-    | { status: 'ok'; data: T }
-    | { status: 'error'; message: string }
-    | { status: 'empty' | 'not_found' | 'forbidden' | 'invalid_password' | 'tiempo expirado'; message?: string };
+// Respuesta genrerica para services con la misma estructura de datos
+export type ApiResponse<T> =
+    | { status: 'ok'; data: T[] }
+    | { status: 'empty' }
+    | { status: 'error'; message: string };
 
 export type GetUserResult =
     | { status: 'ok'; user: User }
@@ -37,39 +38,8 @@ export type CreateTicketResult =
     | { status: 'ok'; ticket_id: number }
     | { status: 'error'; message: string };
 
-export type GetAllTipoEstado =
-    | { status: 'ok'; estados: TipoEstado[] }
-    | { status: 'empty', message: string }
-    | { status: 'error'; message: string };
-
-export type GetPriorityType =
-    | { status: 'ok'; prioridades: any[] }
-    | { status: 'empty' }
-    | { status: 'error'; message: string };
-
-export type GetOriginType =
-    | { status: 'ok'; origen: any[] }
-    | { status: 'empty' }
-    | { status: 'error'; message: string };
-
-export type GetEventType =
-    | { status: 'ok'; eventos: any[] }
-    | { status: 'empty' }
-    | { status: 'error'; message: string };
-    
-export type GetUbicationType = 
-    | {status:'ok'; ubicaciones: any[]}
-    | {status:'empty'}
-    | {status: 'error'; message: string}
-
-export type GetUnityType =  
-    | { status: 'ok'; unidades: any[] }
-    | { status: 'empty' }
-    | { status: 'error'; message: string }
-
-
 export type GetTicketsType =
-    | { status: 'ok'; tickets: any[]; pagination: paginationInfo}
+    | { status: 'ok'; tickets: any[]; pagination: paginationInfo }
     | { status: 'empty' }
     | { status: 'error'; message: string }
 
