@@ -137,6 +137,11 @@ export interface TicketCreateDTO {
     tipo_evento_id: number;
 }
 
+export interface ticketDetalleAsignar {
+    ticket_id: number;
+    soporte_asignado: number;
+}
+
 // MOLDE PARA CREAR UN MOVIMIENTO
 export interface TicketMovimientoCreateDTO {
     ticket_id: number;

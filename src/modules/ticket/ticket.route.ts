@@ -1,36 +1,54 @@
 import express from 'express';
 import { verifyToken } from '../../middlewares/verifyToken';
-import { cancelTicket, createTicket, getTicketById, getTicketsType} from './ticket.controller';
+import { ticketController } from './ticket.controller';
+//import {, getTicketById, getTicketsType} from './ticket.controller';
 import { checkRole } from '../../middlewares/checkRole';
 const router = express.Router();
 
 
 
+// check: ruta para crear un ticket - estado: terminada 
+router.post('/tickets', verifyToken, ticketController.createTicket)
+
+// check: ruta para que el administrador revise el ticket - estado: pendiente a revision
+// analizar: esta ruta puede tener una condicion para que solo el admin pueda cambiar ciertos campos 
+// si es un soporte, solo puede cambiar el estado a "en proceso" o "cerrado"
+router.patch('/tickets/:id/review', verifyToken, checkRole(['administrador']), ticketController.updateTicketAdmin)
+
+// (dato): luego de que el admin revise el ticket, puede asignarselo un soporte encargado o dejarlo sin asignar, aqui se usa esta ruta (abajo)
+// check: ruta para asignarse un ticket sin asignar - estado: pendiente a revision
+
+router.post('/tickets/:id/assign', verifyToken, checkRole(['soporte', 'administrador']), ticketController.assignTicket)
 
 
-// checklist
-// - crear ticket [listo]
-// - registrar movimiento en la auditoria [listo]
+// todo:
+// - seba revisa types para ver que se puede hacer con las que repetimos mucho
+// - seba ruta /observacion - insert tabla ticket_detalle_observacion
+// - seba ruta /integrante - insert tabla ticket_detalle_integrante
+// - seba ruta ticket sin revisar (para los administradores)
+// check: ruta para agregar una observacion al ticket detalle - pendiente a revision
+router.post('/tickets/:id/detalle/observacion', verifyToken, checkRole(['soporte', 'administrador']), ticketController.addTicketObservation);
+// check: ruta para agregar un integrante al ticket detalle - pendiente a revision
+router.post('/tickets/:id/detalle/integrante', verifyToken, checkRole(['soporte', 'administrador']), ticketController.addTicketMember);
+// ruta para cerrar el ticket - pendiente a revision
+router.patch('/tickets/:id/close', verifyToken, checkRole(['soporte', 'administrador']), ticketController.closeTicket);
+// en este ruta se debe editar la respuesta del ticket detalle y cerrar el ticket
 
+// # rutas get
 
-// ruta para crear un nuevo ticket 
-router.post('/tickets', verifyToken, createTicket)
+// check: ruta para ver los tickets sin revisar
+router.get('/tickets/sin-revisar', verifyToken, checkRole(['administrador']))
+
+// check: ruta para ver mis tickets (usuarios) - en desarrollo
+router.get('/tickets/mis-tickets', verifyToken, ticketController.getMyTickets);
+
+// check: ruta para ver un ticket por ID - pendiente a revision
+router.get('/tickets/:id', verifyToken, ticketController.getTicketById)
+
 
 
 // ruta para obtener mis tickets
-
-// todo : falta agregar lo que ven los usuarios y los administradores/soporte
-router.get('/tickets/mis-tickets', verifyToken, getTicketsType)
-
-
-
-// ruta para ticket por id
-router.get('/tickets/:id', verifyToken, getTicketById)
 // dependiendo el rol mostramos mas o menos informacion
-
-// ruta para cancelar ticket antes de los 5 minutos
-router.delete('/tickets/:id',verifyToken,cancelTicket)
-
 
 
 // ruta para ver los tickets por unidad 
@@ -44,23 +62,6 @@ router.get('/tickets/unidad/:unidad_id', verifyToken, checkRole(['administrador'
     // paginacion y filtros (estado/pioridad/tipo)
 });
 
-
-
-
-// ruta para revisar y editar un ticket por id
-// el usuario solicitante no puede editar el ticket despues de crearlo
-// el administrador puede cambiar cualquier campo del ticket
-// el caso de uso para un administrador es revisar un ticket para cambiar estado/pioridad/unidad y estado_revision = 1, por defecto en = 0
-// luego asignarselo un soporte encargado o dejarlo sin asignar
-router.put('/tickets/:id', verifyToken, checkRole(['administrador']), (req, res) => {
-    res.json({ message: 'Ruta para editar un ticket por ID - en desarrollo' });
-    // obtener el ticket id
-    // verificamos el rol del usuario
-    // dependiendo el rol permitimos editar ciertos campos
-    // llamamos al servicio
-    // actualizamos el ticket
-    // retornamos el ticket actualizado
-});
 
 // al terminar las anterior rutas, agregar las siguientes rutas:
 // ruta para asignarse un ticket sin asignar

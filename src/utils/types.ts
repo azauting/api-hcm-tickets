@@ -1,5 +1,10 @@
 import type { User, Ticket, UserWithRole, TipoEstado, paginationInfo } from './interfaces';
 
+export type ApiResponse<T = unknown> =
+    | { status: 'ok'; data: T }
+    | { status: 'error'; message: string }
+    | { status: 'empty' | 'not_found' | 'forbidden' | 'invalid_password' | 'tiempo expirado'; message?: string };
+
 export type GetUserResult =
     | { status: 'ok'; user: User }
     | { status: 'not_found' };
@@ -25,7 +30,7 @@ export type VerifyResult =
 
 export type GetTicketResult =
     | { status: 'ok'; ticket: Ticket }
-    | { status: 'not_found' }
+    | { status: 'not_found', message: string }
     | { status: 'error'; message: string };
 
 export type CreateTicketResult =
@@ -34,7 +39,7 @@ export type CreateTicketResult =
 
 export type GetAllTipoEstado =
     | { status: 'ok'; estados: TipoEstado[] }
-    | { status: 'empty' }
+    | { status: 'empty', message: string }
     | { status: 'error'; message: string };
 
 export type GetPriorityType =
