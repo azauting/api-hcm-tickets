@@ -7,6 +7,7 @@ const router = express.Router();
 
 
 
+
 // check: ruta para crear un ticket - estado: terminada 
 router.post('/tickets', verifyToken, ticketController.createTicket)
 
@@ -18,20 +19,26 @@ router.patch('/tickets/:id/review', verifyToken, checkRole(['administrador']), t
 // (dato): luego de que el admin revise el ticket, puede asignarselo un soporte encargado o dejarlo sin asignar, aqui se usa esta ruta (abajo)
 // check: ruta para asignarse un ticket sin asignar - estado: pendiente a revision
 
-router.post('/tickets/:id/assign', verifyToken, checkRole(['soporte', 'administrador']), ticketController.assignTicket)
+
+router.post('/tickets/:id/assign',verifyToken,checkRole(['soporte', 'administrador']),ticketController.assignTicket);
 
 
-// todo:
-// - seba revisa types para ver que se puede hacer con las que repetimos mucho
-// - seba ruta /observacion - insert tabla ticket_detalle_observacion
-// - seba ruta /integrante - insert tabla ticket_detalle_integrante
+
+// - seba ruta /observacion - insert tabla ticket_detalle_observacion - //todo : en desarrollo (listo)
+router.post('/tickets/:id/detalle/observacion', verifyToken, checkRole(['soporte', 'administrador']), ticketController.addTicketObservation);
+
+// check: ruta para agregar un integrante al ticket detalle - pendiente a revision //todo : pendiente
+router.post('/tickets/:id/detalle/integrante', verifyToken, checkRole(['soporte', 'administrador']));
+
+// - seba ruta /integrante - insert tabla ticket_detalle_integrante //todo : pendiente
 // - seba ruta ticket sin revisar (para los administradores)
 // check: ruta para agregar una observacion al ticket detalle - pendiente a revision
-router.post('/tickets/:id/detalle/observacion', verifyToken, checkRole(['soporte', 'administrador']), ticketController.addTicketObservation);
-// check: ruta para agregar un integrante al ticket detalle - pendiente a revision
-router.post('/tickets/:id/detalle/integrante', verifyToken, checkRole(['soporte', 'administrador']), ticketController.addTicketMember);
+
+
+
+
 // ruta para cerrar el ticket - pendiente a revision
-router.patch('/tickets/:id/close', verifyToken, checkRole(['soporte', 'administrador']), ticketController.closeTicket);
+//router.patch('/tickets/:id/close', verifyToken, checkRole (['soporte', 'administrador']), ticketController.closeTicket);
 // en este ruta se debe editar la respuesta del ticket detalle y cerrar el ticket
 
 // # rutas get
@@ -39,16 +46,12 @@ router.patch('/tickets/:id/close', verifyToken, checkRole(['soporte', 'administr
 // check: ruta para ver los tickets sin revisar
 router.get('/tickets/sin-revisar', verifyToken, checkRole(['administrador']))
 
-// check: ruta para ver mis tickets (usuarios) - en desarrollo
-router.get('/tickets/mis-tickets', verifyToken, ticketController.getMyTickets);
+// check: ruta para ver mis tickets (usuarios) - listo
+router.get('/tickets/mis-tickets', verifyToken, ticketController.getTickets);
 
 // check: ruta para ver un ticket por ID - pendiente a revision
 router.get('/tickets/:id', verifyToken, ticketController.getTicketById)
 
-
-
-// ruta para obtener mis tickets
-// dependiendo el rol mostramos mas o menos informacion
 
 
 // ruta para ver los tickets por unidad 
@@ -86,15 +89,20 @@ router.post('/tickets/:id/detalle/integrante', verifyToken, checkRole(['soporte'
     // llamamos al servicio para crear el integrante
 });
 
-/*
+
 // rutas para obtener los tipos: 
 // todo: rutas para ver los tipos listas
-//router.get('/tickets/tipo_unidad', verifyToken, GetUnityType) 
-///router.get('/tickets/tipo_estado',verifyToken, GetStatusType);
-//router.get('/tickets/tipo_prioridad', verifyToken, GetPriorityType);
-//router.get('/tickets/tipo_origen',verifyToken, GetOriginType)
-//router.get('/tickets/tipo_evento', verifyToken, GetEventType)
-//router.get('/tickets/ubicacion', verifyToken)
+
+router.get('/tickets/tipo_estado', verifyToken, ticketController.getStatusType);
+router.get('/tickets/tipo_prioridad', verifyToken, ticketController.getPriorityType);
+router.get('/tickets/tipo_origen', verifyToken, ticketController.getOriginType);
+router.get('/tickets/tipo_evento', verifyToken, ticketController.getEventType)
+router.get('/tickets/ubicacion', verifyToken, ticketController.getLocationType);
+router.get('/tickets/tipo_unidad', verifyToken, ticketController.getUnityType)
+
+
+/*
+
 router.get('/tickets/types/:type', verifyToken)
 router.get('/tickets/types', verifyToken)
 

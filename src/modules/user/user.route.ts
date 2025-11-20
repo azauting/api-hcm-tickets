@@ -13,6 +13,10 @@ router.get('/users/:id', getUserById); // listo
 // actualizar el usuario rol/unidad/contrasena
 router.patch('/users/:id', updateUserPassword) // pendiente
 
+
+//ruta para ver soportes disponibles para asignarles tickets
+// router.get('/tickets/soportes') // todo : usuarios disponibles para asignar tickets
+
 // router.get("/users",verifyToken, checkRole(["administrador", ), getUsers);
 
 
