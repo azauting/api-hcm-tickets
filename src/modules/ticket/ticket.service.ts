@@ -177,9 +177,8 @@ export const ticketService = {
             };
         }
     },
-    // check: obtener todos los tipos de estado - a revisar
 };
-
+// services para obtener los tipos de ticket - en desarrollo
 /*
  getAllTipoEstado: async (): Promise<GetAllTipoEstado> => {
         log.info({ action: 'getAllTipoEstado' }, 'Obteniendo todos los tipos de estado');

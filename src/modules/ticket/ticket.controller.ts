@@ -3,7 +3,7 @@ import type { AuthRequest } from '../../utils/interfaces';
 import { validadorTicketForm } from '../../utils/validatorTicketForm';
 import { ticketService } from './ticket.service';
 import { logger } from '../../utils/logger';
-import type { TicketCreateDTO } from '../../utils/interfaces';
+import type { TicketCreateDTO, ticketDetalleAsignar } from '../../utils/interfaces';
 import { ticketLogController } from '../ticketLog/ticketLog.controller';
 import type { TicketMovimientoCreateDTO } from '../../utils/interfaces';
 import { parseIdParam, sendResponse } from '../../utils/helper';
@@ -69,11 +69,7 @@ export const ticketController = {
         // décimo paso, retornar respuesta exitosa
         return sendResponse(res, 201, 'Ticket creado correctamente', { ticket_id, message: logResult.message });
     },
-    // ruta para revisar y editar un ticket por id
-    // el usuario solicitante no puede editar el ticket despues de crearlo
-    // el administrador puede cambiar cualquier campo del ticket
-    // el caso de uso para un administrador es revisar un ticket para cambiar estado/pioridad/unidad y estado_revision = 1, por defecto en = 0
-    // luego asignarselo un soporte encargado o dejarlo sin asignar
+    // check: controller para que el admin revise el ticket - en desarrollo
     updateTicketAdmin: async (req: AuthRequest, res: Response) => {
         // obtenemos el id del ticket desde los parametros
         const ticketId = Number(req.params.id);
@@ -83,22 +79,67 @@ export const ticketController = {
         const updateData = req.body;
         log.info({ ticketId, updateData }, 'Recibiendo data para actualizar ticket');
         // en el middleware checkRole['administrador'] ya se valida que el usuario es admin
-        // por lo tanto puede actualizar cualquier campo del ticket
-        // obtenemos los campos que se van a actualizar desde el body
         // verificamos el id del ticket
         if (!ticketId || ticketId <= 0) {
             return sendResponse(res, 400, 'ID de ticket inválido');
         }
         // llamamos al servicio para actualizar el ticket
-        const result = await ticketService.updateTicketById(ticketId, updateData);
+        const result = await ticketService.updateTicketAdmin(ticketId, updateData);
 
         if (result.status === 'not_found') {
-            return sendResponse(res, 404, result.message);
+            return sendResponse(res, 404, result.message!);
         }
         if (result.status === 'error') {
-            return sendResponse(res, 500, result.message);
+            return sendResponse(res, 500, result.message!);
         }
-        return sendResponse(res, 200, 'Ticket actualizado correctamente');
+        // luego de actualizar el ticket, registramos el movimiento en la auditoria
+        const objetoMovimiento: TicketMovimientoCreateDTO = {
+            ticket_id: ticketId,
+            tipo_movimiento_id: 9, // ticket revisado y actualizado por admin // estos codigos de movimiento pueden cambiar en el futuro
+            usuario_id: usuario_id,
+        };
+        const logResult = await ticketLogController.createTicketLog(objetoMovimiento);
+        log.info({ ticketId }, 'Log del ticket actualizado correctamente');
+
+        return sendResponse(res, 200, 'Ticket actualizado correctamente', { message: logResult.message });
+    },
+    // check: controller para que el administrador asigne a un soporte o el soporte se asigne un ticket sin asignar - en desarrollo
+    /*
+       TICKET_DETALLE {
+        int ticket_detalle_id PK
+        int ticket_id FK
+        varchar respuesta
+        int soporte_asignado FK
+    */
+    assignTicket: async (req: AuthRequest, res: Response) => {
+        const ticketId = parseIdParam(req.params.id);
+        const usuario_id = req.user!.id;
+        log.info({ ticketId, usuario_id }, 'Recibiendo data para asignar ticket');
+
+        if (!ticketId || ticketId <= 0) {
+            return sendResponse(res, 400, 'ID de ticket inválido');
+        }
+        // creamos un objeto con la informacion para asignar el ticket
+        const objetoAsignacion: ticketDetalleAsignar = {
+            ticket_id: ticketId,
+            soporte_asignado: usuario_id,
+        };
+        const result = await ticketService.assignTicket(objetoAsignacion);
+        if (result.status === 'not_found') {
+            return sendResponse(res, 404, result.message!);
+        }
+        if (result.status === 'error') {
+            return sendResponse(res, 500, result.message!);
+        }
+        // luego de asignar el ticket, registramos el movimiento en la auditoria
+        const objetoMovimiento: TicketMovimientoCreateDTO = {
+            ticket_id: ticketId,
+            tipo_movimiento_id: 3, // ticket asignado a soporte // estos codigos de movimiento pueden cambiar en el futuro 
+            usuario_id: usuario_id,
+        };
+        const logResult = await ticketLogController.createTicketLog(objetoMovimiento);
+        log.info({ ticketId }, 'Log del ticket asignado correctamente');    
+        return sendResponse(res, 200, 'Ticket asignado correctamente', { message: logResult.message });
     },
     getTicketById: async (req: AuthRequest, res: Response) => {
         const ticketId = Number(req.params.id);
