@@ -9,7 +9,7 @@ import type { Credentials, VerifyResult } from '../../utils/types';
 const log = logger.child({ ubicacion: 'authService' });
 
 const JWT_SECRET_RAW = process.env.JWT_SECRET;
-export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '1h';
+export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '2h';
 export const JWT_SECRET = JWT_SECRET_RAW ? new TextEncoder().encode(JWT_SECRET_RAW) : null;
 
 export const AuthService = {
