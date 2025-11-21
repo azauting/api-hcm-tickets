@@ -1,4 +1,4 @@
-import type { User, Ticket, UserWithRole, TipoEstado, paginationInfo } from './interfaces';
+import type { User, Ticket, UserWithRole, TipoEstado, paginationInfo, TicketConDetalle } from './interfaces';
 
 // Respuesta genrerica para services con la misma estructura de datos
 export type ApiResponse<T> =
@@ -30,7 +30,7 @@ export type VerifyResult =
     | { status: 'ok'; user: UserWithRole };
 
 export type GetTicketResult =
-    | { status: 'ok'; ticket: Ticket }
+    | { status: 'ok'; ticket: TicketConDetalle }
     | { status: 'not_found', message: string }
     | { status: 'error'; message: string };
 

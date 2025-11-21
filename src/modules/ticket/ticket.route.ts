@@ -33,8 +33,18 @@ router.get('/tickets/sin-revisar', verifyToken, checkRole(['administrador']), ti
 router.get('/tickets/mis-tickets', verifyToken, ticketController.getTicketsByUserId);
 // TODO: ruta para ver los tickets por unidad - estado: : ✅ (desarrollar)
 router.get('/tickets/revisados', verifyToken, checkRole(['administrador', 'soporte']), ticketController.getTicketsByUnit);
+//! REVISAR
+//! URGENTE
 // TODO: ruta para ver un ticket especifico - pendiente a revision
-router.get('/tickets/:id', verifyToken, ticketController.getTicketById);
+router.get('/tickets/:id', verifyToken, ticketController.getTicketById); // pendiente a revision, probar con un ticket que tenga integrantes y observaciones
+// TODO: si no funciona
+// TODO: se crearan rutas para obtener el tickete_detalle, observaciones e integrantes por separado con el ticket_id
+// TODO: asi se podra obtener toda la informacion necesaria de un ticket especifico
+// TODO:  el front hara las llamadas necesarias para obtener toda la informacion
+//* router.get('/tickets/:id/detalle', verifyToken, ticketController.getTicketDetailsById);
+//* router.get('/tickets/:id/detalle/observaciones', verifyToken, ticketController.getTicketObservationsById);
+//* router.get('/tickets/:id/detalle/integrantes', verifyToken, ticketController.getTicketMembersById);
+
 
 
 // rutas para obtener los tipos: 

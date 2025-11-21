@@ -66,6 +66,7 @@ export interface Ticket {
     ubicacion_id: number;
 }
 
+
 // Ticket detalle y subtablas
 export interface TicketDetalle {
     ticket_detalle_id: number;
@@ -73,6 +74,12 @@ export interface TicketDetalle {
     respuesta: string;
     soporte_asignado: number | null;
 }
+
+// ticket con ticket detalle
+export interface TicketConDetalle extends Ticket {
+    detalles: TicketDetalle[];
+}
+
 
 export interface TicketDetalleObservacion {
     ticket_detalle_observacion_id: number;

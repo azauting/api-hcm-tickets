@@ -1,4 +1,4 @@
-import type { Ticket, TicketCreateDTO, TicketDetalleObservacion, TipoEstado, TipoEvento, TipoOrigen, TipoPrioridad, TipoUnidad, Ubicacion, TicketDetalle } from '../../utils/interfaces';
+import type { Ticket, TicketCreateDTO, TicketDetalleObservacion, TipoEstado, TipoEvento, TipoOrigen, TipoPrioridad, TipoUnidad, Ubicacion, TicketDetalle, TicketConDetalle } from '../../utils/interfaces';
 import type { ResultSetHeader } from 'mysql2';
 import pool from '../../config/db.config';
 import { logger } from '../../utils/logger';
@@ -202,37 +202,86 @@ export const ticketService = {
         }
     },
     // TODO: ver un ticket por ID - estado: ✅
-    getTicketId: async (ticketId: number): Promise<GetTicketResult> => {
-        log.info({ action: 'getTicketById', ticketId }, 'Obteniendo ticket por ID');
+getTicketId: async (ticketId: number): Promise<GetTicketResult> => {
+    log.info({ action: 'getTicketById', ticketId }, 'Obteniendo ticket por ID');
 
-        if (!ticketId || ticketId <= 0) {
-            log.warn({ ticketId }, 'ID de ticket inválido');
-            return { status: 'error', message: 'ID de ticket inválido' };
+    if (!ticketId || ticketId <= 0) {
+        log.warn({ ticketId }, 'ID de ticket inválido');
+        return { status: 'error', message: 'ID de ticket inválido' };
+    }
+
+    try {
+        const [rows] = await pool.query<RowDataPacket[]>(
+            `SELECT 
+                t.ticket_id,
+                t.usuario_id_solicita,
+                t.asunto,
+                t.descripcion,
+                t.telefono,
+                t.autor_problema,
+                t.ubicacion_id,
+                t.direccion_ip,
+                t.estado_de_revision,
+                t.tipo_prioridad_id,
+                t.tipo_unidad_id,
+                t.tipo_estado_id,
+                t.tipo_origen_id,
+                t.tipo_evento_id,
+                td.ticket_detalle_id,
+                td.respuesta,
+                td.soporte_asignado
+            FROM ticket t
+            LEFT JOIN ticket_detalle td ON t.ticket_id = td.ticket_id
+            WHERE t.ticket_id = ?`,
+            [ticketId]
+        );
+
+        // Si no hay filas, no existe el ticket
+        if (!rows || rows.length === 0) {
+            log.warn({ ticketId }, 'Ticket no encontrado');
+            return { status: 'not_found', message: 'Ticket no encontrado' };
         }
 
-        try {
+        // Construimos el array de detalles filtrando las filas sin ticket_detalle_id
+        const detalles: TicketDetalle[] = rows
+            .filter(row => row.ticket_detalle_id != null) // evita td.* = null
+            .map(row => ({
+                ticket_detalle_id: Number(row.ticket_detalle_id),
+                ticket_id: Number(row.ticket_id),
+                respuesta: row.respuesta ?? '',
+                soporte_asignado: row.soporte_asignado ?? null
+            }));
 
-            const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
-                `SELECT * FROM ticket WHERE ticket_id = ?`,
-                [ticketId]
-            );
+        // Usamos rows[0] ahora que sabemos que existe
+        const base = rows[0];
 
-            const ticket = rows[0];
+        const ticketConDetalle: TicketConDetalle = {
+            ticket_id: Number(base.ticket_id),
+            usuario_id_solicita: Number(base.usuario_id_solicita),
+            asunto: base.asunto,
+            descripcion: base.descripcion,
+            telefono: base.telefono,
+            autor_problema: base.autor_problema,
+            ubicacion_id: base.ubicacion_id,
+            direccion_ip: base.direccion_ip,
+            estado_de_revision: Boolean(base.estado_de_revision),
+            tipo_prioridad_id: base.tipo_prioridad_id,
+            tipo_unidad_id: base.tipo_unidad_id,
+            tipo_estado_id: base.tipo_estado_id,
+            tipo_origen_id: base.tipo_origen_id,
+            tipo_evento_id: base.tipo_evento_id ?? null,
+            detalles
+        };
 
-            // 🔥 VALIDACIÓN: si no existe, devolver status not_found
-            if (!ticket) {
-                log.warn({ ticketId }, 'Ticket no encontrado');
-                return { status: 'not_found', message: 'Ticket no encontrado' };
-            }
+        log.info({ ticketId }, 'Ticket obtenido correctamente');
+        return { status: 'ok', ticket: ticketConDetalle };
 
-            log.info({ ticketId }, 'Ticket obtenido correctamente');
-            return { status: 'ok', ticket };
+    } catch (error) {
+        log.error({ error, ticketId }, 'Error al obtener el ticket de la base de datos');
+        return { status: 'error', message: 'Error al obtener el ticket' };
+    }
+},
 
-        } catch (error) {
-            log.error({ error, ticketId }, 'Error al obtener el ticket de la base de datos');
-            return { status: 'error', message: 'Error al obtener el ticket' };
-        }
-    },
 
     // TODO: ver mis tickets creados - estado: ✅
     getAllTicketByUserId: async (userId: number, params: { page: number; limit: number; offset: number; filters: any }): Promise<GetTicketsType> => {

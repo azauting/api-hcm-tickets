@@ -177,26 +177,34 @@ export const ticketController = {
 
         const ticket = result.ticket;
 
-        // si es solicitante no es el usuario que creo el ticket, no puede verlo
+        // permiso: solicitante solo ve su propio ticket
         if (userRole === "solicitante" && ticket.usuario_id_solicita !== userId) {
             return sendResponse(res, 403, 'No tienes permiso para ver este ticket');
         }
 
-        // si es solicitante, mostramos solo ciertos campos
-        let filteredTicket: any = ticket;
-
         if (userRole === "solicitante") {
-            filteredTicket = {
+            // si hay detalles, tomo el último elemento del array (sin suponer created_at)
+            const ultimaRespuesta = (ticket.detalles && ticket.detalles.length > 0)
+                ? ticket.detalles[ticket.detalles.length - 1].respuesta
+                : null;
+
+            const filteredTicket: any = {
                 ticket_id: ticket.ticket_id,
                 asunto: ticket.asunto,
                 descripcion: ticket.descripcion,
                 estado: ticket.tipo_estado_id,
                 prioridad: ticket.tipo_prioridad_id,
-                ubicacion: ticket.ubicacion_id
+                ubicacion: ticket.ubicacion_id,
+                ...(ultimaRespuesta ? { respuesta: ultimaRespuesta } : {})
             };
+
+            return sendResponse(res, 200, 'Ticket obtenido correctamente', { ticket: filteredTicket });
         }
-        return sendResponse(res, 200, 'Ticket obtenido correctamente', { ticket: filteredTicket });
+
+        // Roles admin/soporte reciben todo
+        return sendResponse(res, 200, 'Ticket obtenido correctamente', { ticket });
     },
+
     addTicketObservation: async (req: AuthRequest, res: Response) => {
         const ticketId = Number(req.params.id);
         const userId = req.user!.id;
