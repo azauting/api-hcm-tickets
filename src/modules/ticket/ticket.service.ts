@@ -211,14 +211,15 @@ export const ticketService = {
         }
 
         try {
+
             const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
                 `SELECT * FROM ticket WHERE ticket_id = ?`,
                 [ticketId]
             );
-            // si no hay filas, retornar no encontrado
-            // si hay filas, retornar el ticket
+
             const ticket = rows[0];
 
+            // 🔥 VALIDACIÓN: si no existe, devolver status not_found
             if (!ticket) {
                 log.warn({ ticketId }, 'Ticket no encontrado');
                 return { status: 'not_found', message: 'Ticket no encontrado' };
@@ -232,6 +233,7 @@ export const ticketService = {
             return { status: 'error', message: 'Error al obtener el ticket' };
         }
     },
+
     // TODO: ver mis tickets creados - estado: ✅
     getAllTicketByUserId: async (userId: number, params: { page: number; limit: number; offset: number; filters: any }): Promise<GetTicketsType> => {
 
@@ -298,7 +300,7 @@ export const ticketService = {
                 'tickets obtenidos correctamente para el usuario'
             );
 
-            return {status: 'ok',tickets,pagination: { page, limit, count: tickets.length }};
+            return { status: 'ok', tickets, pagination: { page, limit, count: tickets.length } };
 
         } catch (error) {
             log.error({ error, userId }, 'error al obtener los tickets');
@@ -308,35 +310,58 @@ export const ticketService = {
     // TODO: actualizar ticket por admin - estado: ✅
     updateTicketAdmin: async (ticketId: number, updateData: any) => {
         try {
-            // si no viene nada para actualizar
+            // Validación básica
             if (!updateData || typeof updateData !== 'object') {
                 return { status: 'error', message: 'Datos inválidos' };
             }
-            // ejecuta el update directo
+
+            // Siempre marcar como revisado
+            updateData.estado_de_revision = 1;
+
             const [result] = await pool.query<ResultSetHeader>(
                 'UPDATE ticket SET ? WHERE ticket_id = ?',
                 [updateData, ticketId]
             );
-            // si el ticket no existe
+
             if (result.affectedRows === 0) {
                 return { status: 'not_found', message: 'Ticket no encontrado' };
             }
+
             return { status: 'ok' };
+
         } catch (error) {
             log.error({ error, ticketId, updateData }, 'Error en updateTicketAdmin');
             return { status: 'error', message: 'No se pudo actualizar el ticket' };
         }
     },
-    // TODO: asignar soporte a ticket - estado: ✅ (FALTA REVISAR)
+
     assignTicket: async (ticket_id: number, soporte_asignado: number) => {
         log.info({ action: 'assignTicket', ticket_id, soporte_asignado }, 'Asignando soporte al ticket');
+
         try {
+            // Validar que el soporte exista y sea rol soporte
+            const [soporteRows] = await pool.query<RowDataPacket[]>(
+                `SELECT usuario_id 
+                FROM usuario 
+                WHERE usuario_id = ? AND rol_id = 2`,
+                [soporte_asignado]
+            );
+
+            // si no existe el soporte no continuar
+            if (!soporteRows.length) {
+                return {
+                    status: 'error',
+                    message: 'El soporte no existe o no es rol soporte'
+                };
+            }
+
+            // 🔍 Obtener el detalle del ticket
             const [rows] = await pool.query<RowDataPacket[]>(
                 `SELECT ticket_detalle_id FROM ticket_detalle WHERE ticket_id = ?`,
                 [ticket_id]
             );
 
-            const detalle = rows[0]
+            const detalle = rows[0];
 
             if (!detalle) {
                 return {
@@ -345,6 +370,7 @@ export const ticketService = {
                 };
             }
 
+            // Actualizar el soporte asignado en ticket_detalle
             const [update] = await pool.query<ResultSetHeader>(
                 `UPDATE ticket_detalle
                 SET soporte_asignado = ?
@@ -353,15 +379,17 @@ export const ticketService = {
             );
 
             if (update.affectedRows === 0) {
-                return {status: 'error',message: 'No se pudo asignar el ticket'};}
+                return { status: 'error', message: 'No se pudo asignar el ticket' };
+            }
 
-            return {status: 'ok',ticket_detalle_id: detalle.ticket_detalle_id,soporte_asignado};
+            return { status: 'ok', ticket_detalle_id: detalle.ticket_detalle_id, soporte_asignado };
 
         } catch (error) {
             log.error({ error, ticket_id, soporte_asignado }, 'Error al asignar soporte');
-            return {status: 'error', message: 'Error interno al asignar soporte'};
+            return { status: 'error', message: 'Error interno al asignar soporte' };
         }
     },
+
     // TODO: crear detalle integrante - estado: ✅ (FALTA REVISAR)
     addTicketMember: async (ticket_id: number, usuario_id: number, usuario_id_solicitante: number) => {
         log.info({ action: 'addTicketMember', ticket_id, usuario_id, usuario_id_solicitante }, 'Agregando integrante al ticket');
@@ -375,7 +403,7 @@ export const ticketService = {
 
             if (!detalle) {
                 return { status: 'not_found', message: 'El ticket no tiene un detalle asociado' };
-            }   
+            }
             // verificamos si existe la tabla ticket_detalle_integrante para ese ticket_detalle_id y usuario_id
             const [existingRows] = await pool.query<RowDataPacket[]>(
                 `SELECT ticket_detalle_integrante_id
@@ -389,9 +417,9 @@ export const ticketService = {
             }
             // 2. Si no existe, insertamos el nuevo integrante
             const [insertResult] = await pool.query<ResultSetHeader>(
-                `INSERT INTO ticket_detalle_integrante 
+                `INSERT INTO ticket_detalle_integrante
                 (ticket_detalle_id, usuario_id)
-                VALUES (?, ?, ?)`,
+                VALUES (?, ?)`,
                 [detalle.ticket_detalle_id, usuario_id]
             );
             if (insertResult.affectedRows === 0) {
@@ -405,27 +433,91 @@ export const ticketService = {
     },
     // TODO: actualizar ticket por soporte/administrador - estado: ✅ (FALTA REVISAR)
     updateTicketSupport: async (ticketId: number, updateData: any) => {
-        log.info({ action: 'updateTicketSupport', ticketId, updateData }, 'Actualizando ticket por soporte/administrador');
         try {
-            // si no viene nada para actualizar
+            // Validar body
             if (!updateData || typeof updateData !== 'object') {
                 return { status: 'error', message: 'Datos inválidos' };
             }
-            // ejecuta el update directo
-            const [result] = await pool.query<ResultSetHeader>(
-                'UPDATE ticket SET ? WHERE ticket_id = ?',
-                [updateData, ticketId]
-            );
-            // si el ticket no existe
-            if (result.affectedRows === 0) {
-                return { status: 'not_found', message: 'Ticket no encontrado' };
+
+            const allowedTicketFields = ["tipo_estado_id", "tipo_prioridad_id"];
+            const allowedDetalleFields = ["respuesta"];
+
+            const ticketUpdates: any = {};
+            const detalleUpdates: any = {};
+
+            // Filtrar campos válidos
+            for (const key of Object.keys(updateData)) {
+                if (allowedTicketFields.includes(key)) {
+                    ticketUpdates[key] = updateData[key];
+                }
+                if (allowedDetalleFields.includes(key)) {
+                    detalleUpdates[key] = updateData[key];
+                }
             }
-            return { status: 'ok', message: 'Ticket actualizado correctamente' };
+
+            // Si no se está actualizando nada permitido
+            if (Object.keys(ticketUpdates).length === 0 && Object.keys(detalleUpdates).length === 0) {
+                return { status: 'error', message: 'No hay campos válidos para actualizar' };
+            }
+
+            // 1️⃣ Actualizar tabla ticket (si corresponde)
+            if (Object.keys(ticketUpdates).length > 0) {
+                const [result] = await pool.query<ResultSetHeader>(
+                    `UPDATE ticket SET ? WHERE ticket_id = ?`,
+                    [ticketUpdates, ticketId]
+                );
+
+                if (result.affectedRows === 0) {
+                    return { status: 'not_found', message: 'Ticket no encontrado' };
+                }
+            }
+
+            // 2️⃣ Actualizar respuesta en ticket_detalle
+            if (Object.keys(detalleUpdates).length > 0) {
+                const [detalleRows] = await pool.query<RowDataPacket[]>(
+                    `SELECT ticket_detalle_id FROM ticket_detalle WHERE ticket_id = ?`,
+                    [ticketId]
+                );
+
+                const detalle = detalleRows[0];
+                if (!detalle) {
+                    return { status: 'error', message: 'El ticket no tiene un detalle asociado' };
+                }
+
+                await pool.query(
+                    `UPDATE ticket_detalle SET ? WHERE ticket_detalle_id = ?`,
+                    [detalleUpdates, detalle.ticket_detalle_id]
+                );
+            }
+
+            return {
+                status: 'ok',
+                cambios: updateData
+            };
+
         } catch (error) {
             log.error({ error, ticketId, updateData }, 'Error en updateTicketSupport');
             return { status: 'error', message: 'No se pudo actualizar el ticket' };
         }
     },
+    // TODO : validar que el soporte esté asignado al ticket - estado: ✅
+    isSupportAssigned: async (ticketId: number, soporteId: number): Promise<boolean> => {
+        try {
+            const [rows] = await pool.query<RowDataPacket[]>(
+                `SELECT td.ticket_detalle_id
+                FROM ticket_detalle td
+                WHERE td.ticket_id = ? AND td.soporte_asignado = ?`,
+                [ticketId, soporteId]
+            );
+
+            return rows.length > 0;
+        } catch (error) {
+            log.error({ error, ticketId, soporteId }, "Error en isSupportAssigned");
+            return false;
+        }
+    },
+
+
     // TODO MOSTRAR TODOS LOS TICKETS CON estado_revision = 0 (significa sin revisar)
     getUnreviewedTickets: async (): Promise<ApiResponse<Ticket>> => {
         log.info({ action: 'getUnreviewedTickets' }, 'Obteniendo tickets sin revisar');
@@ -453,7 +545,7 @@ export const ticketService = {
             const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
                 `SELECT * FROM ticket WHERE ubicacion_id = ?`,
                 [unidad_id]
-            );  
+            );
             const tickets = rows as Ticket[];
 
             if (!tickets.length) {

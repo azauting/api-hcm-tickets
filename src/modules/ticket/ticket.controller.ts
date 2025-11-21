@@ -153,6 +153,7 @@ export const ticketController = {
             soporte_asignado: soporteAsignado
         });
     },
+
     getTicketById: async (req: AuthRequest, res: Response) => {
         const ticketId = Number(req.params.id);
         const userId = req.user!.id;
@@ -215,9 +216,17 @@ export const ticketController = {
             return sendResponse(res, 500, result.message);
         }
 
+        // REGISTRAR EL MOVIMIENTO CORRECTO "COMENTARIO_AGREGADO"(ID = 7)
+        await ticketLogController.createTicketLog({
+            ticket_id: ticketId,
+            tipo_movimiento_id: 7,
+            usuario_id: userId
+        });
+
         return sendResponse(res, 200, 'Observación agregada correctamente', result.data[0]
         );
     },
+
     cancelTicket: async (req: AuthRequest, res: Response) => {
         const ticketId = Number(req.params.id);
         const userId = req.user!.id;
@@ -281,21 +290,22 @@ export const ticketController = {
 
     // TODO: Controladores en desarrollo
     // TODO: controlador para agregar integrante al ticket - estado: (falta revisar)
-     // ! FALTA REVISAR
+    // ! FALTA REVISAR
     addTicketMember: async (req: AuthRequest, res: Response) => {
-        // obtenemos el ticketId desde los parametros
         const ticketId = parseIdParam(req.params.id);
-        // obtenemos el usuario_id que solicita agregar al integrante
         const usuario_id_solicitante = req.user!.id;
-        // obtenemos el usuario id desde el body porque lo deben seleccionar
         const usuario_id = req.body.usuario_id;
+
         if (ticketId === null) {
             return sendResponse(res, 400, 'ID de ticket inválido');
         }
+
         if (!usuario_id || typeof usuario_id !== 'number' || usuario_id <= 0) {
             return sendResponse(res, 400, 'ID de usuario inválido');
         }
+
         const result = await ticketService.addTicketMember(ticketId, usuario_id, usuario_id_solicitante);
+
         if (result.status === 'error') {
             return sendResponse(res, 500, result.message ?? 'Error al agregar integrante');
         }
@@ -303,47 +313,63 @@ export const ticketController = {
         if (result.status === 'not_found') {
             return sendResponse(res, 404, result.message ?? 'Ticket no encontrado');
         }
-        // luego de agregar el integrante, registramos el movimiento en la auditoria
-        // TODO: REVISAR EL TIPO DE MOVIMIENTO
+
+        // 🔥 REGISTRO DEL MOVIMIENTO "INTEGRANTE_AGREGADO" (ID = 15)
         const objetoMovimiento: TicketMovimientoCreateDTO = {
             ticket_id: ticketId,
-            tipo_movimiento_id: 4,
+            tipo_movimiento_id: 15,
             usuario_id: usuario_id_solicitante,
         };
-        const logResult = await ticketLogController.createTicketLog(objetoMovimiento);
+
+        await ticketLogController.createTicketLog(objetoMovimiento);
 
         return sendResponse(res, 200, 'Integrante agregado correctamente', { ticket_detalle_integrante_id: result.ticket_detalle_integrante_id });
     },
+
     // TODO: controlador para que el soporte o admin actualice el ticket - estado: (falta revisar)
     // ! FALTA REVISAR
     updateTicketSupport: async (req: AuthRequest, res: Response) => {
         const ticketId = parseIdParam(req.params.id);
         const usuario_id = req.user!.id;
-        const updateData = req.body;
+        const role = req.user!.tipo_rol;
+        const body = req.body;
+
         if (ticketId === null) {
             return sendResponse(res, 400, 'ID de ticket inválido');
         }
-        const result = await ticketService.updateTicketSupport(ticketId, updateData);
+
+        // 1️alidar que el soporte esté asignado
+        if (role === "soporte") {
+            const assigned = await ticketService.isSupportAssigned(ticketId, usuario_id);
+            if (!assigned) {
+                return sendResponse(res, 403, "No puedes modificar un ticket que no tienes asignado");
+            }
+        }
+
+        // 2️⃣ Llamar al servicio
+        const result = await ticketService.updateTicketSupport(ticketId, body);
 
         if (result.status === 'not_found') {
             return sendResponse(res, 404, result.message ?? 'Ticket no encontrado');
         }
+
         if (result.status === 'error') {
             return sendResponse(res, 500, result.message ?? 'Error al actualizar el ticket');
         }
-        // luego de actualizar el ticket, registramos el movimiento en la auditoria
-        // TODO: REVISAR EL TIPO DE MOVIMIENTO
-        const objetoMovimiento: TicketMovimientoCreateDTO = {
+
+        // 3️⃣ Registrar movimiento (ID = 10)
+        await ticketLogController.createTicketLog({
             ticket_id: ticketId,
-            tipo_movimiento_id: 10,
-            usuario_id: usuario_id,
-        };
-        const logResult = await ticketLogController.createTicketLog(objetoMovimiento);
-        log.info({ ticketId }, 'Log del ticket actualizado correctamente');
-        return sendResponse(res, 200, 'Ticket actualizado correctamente', { message: result.message });
+            tipo_movimiento_id: 4, // respondido por soporte y cerrado
+            usuario_id,
+        });
+
+        return sendResponse(res, 200, 'Ticket actualizado correctamente', {
+            cambios: result.cambios
+        });
     },
+
     // TODO: controlador para obtener los tickets sin revisar - estado: (falta revisar)
-    // ! FALTA REVISAR
     getUnreviewedTickets: async (req: AuthRequest, res: Response) => {
         log.info('Obteniendo tickets sin revisar');
         const result = await ticketService.getUnreviewedTickets();
@@ -356,7 +382,7 @@ export const ticketController = {
         return sendResponse(res, 200, 'Tickets sin revisar obtenidos correctamente', { tickets: result.data });
     },
     // TODO: controlador para obtener los tickets por unidad - estado: (falta revisar)
-    // ! FALTA REVISAR
+    // ! FALTA REVISAR (desarrollar)
     getTicketsByUnitId: async (req: AuthRequest, res: Response) => {
         const unidadId = parseIdParam(req.params.unidad_id);
         if (unidadId === null) {
@@ -480,20 +506,3 @@ export const ticketController = {
 }; */
 
 
-// controller tipos
-/*
-
-    
-    //metodos para obtener todos los tipos de prioridad
-    
-    // metodo para obtener todos los tipos de origen
-    
-
-
-    
-
-
-
-    
-    
-*/
