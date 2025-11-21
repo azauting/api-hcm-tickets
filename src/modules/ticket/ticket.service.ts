@@ -539,25 +539,26 @@ export const ticketService = {
         }
     },
     // TODO: service para obtener los tickets por unidad - estado: ✅
-    getTicketsByUnitId: async (unidad_id: number): Promise<ApiResponse<Ticket>> => {
-        log.info({ action: 'getTicketsByUnitId', unidad_id }, 'Obteniendo tickets por unidad');
+    getTicketsByUnit: async (tipo_unidad_id: number): Promise<ApiResponse<Ticket>> => {
+        log.info({ action: 'getTicketsByUnitId', tipo_unidad_id }, 'Obteniendo tickets por unidad');
         try {
+            // obtener todos los ticket de esa unidad y que tengan estado_revision = 1 (revisados)
             const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
-                `SELECT * FROM ticket WHERE ubicacion_id = ?`,
-                [unidad_id]
+                `SELECT * FROM ticket WHERE tipo_unidad_id = ? AND estado_de_revision = 1 ORDER BY ticket_id DESC`,
+                [tipo_unidad_id]
             );
             const tickets = rows as Ticket[];
 
             if (!tickets.length) {
-                log.warn({ unidad_id }, 'No se encontraron tickets para esta unidad');
+                log.warn({ tipo_unidad_id }, 'No se encontraron tickets para esta unidad');
                 return { status: 'empty' };
             }
 
-            log.info({ unidad_id }, 'Tickets obtenidos correctamente');
+            log.info({ tipo_unidad_id }, 'Tickets obtenidos correctamente');
             return { status: 'ok', data: tickets };
 
         } catch (error) {
-            log.error({ error, unidad_id }, 'Error al obtener tickets por unidad');
+            log.error({ error, tipo_unidad_id }, 'Error al obtener tickets por unidad');
             return { status: 'error', message: 'Error al obtener tickets por unidad' };
         }
     },

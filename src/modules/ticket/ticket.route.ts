@@ -31,10 +31,10 @@ router.patch('/tickets/:id/update', verifyToken, checkRole(['soporte', 'administ
 router.get('/tickets/sin-revisar', verifyToken, checkRole(['administrador']), ticketController.getUnreviewedTickets);
 // TODO : ruta para ver mis tickets creados - estado: ✅
 router.get('/tickets/mis-tickets', verifyToken, ticketController.getTicketsByUserId);
+// TODO: ruta para ver los tickets por unidad - estado: : ✅ (desarrollar)
+router.get('/tickets/revisados', verifyToken, checkRole(['administrador', 'soporte']), ticketController.getTicketsByUnit);
 // TODO: ruta para ver un ticket especifico - pendiente a revision
 router.get('/tickets/:id', verifyToken, ticketController.getTicketById);
-// TODO: ruta para ver los tickets por unidad - estado: : ✅ (desarrollar)
-router.get('/tickets/revisados/:unidad_id', verifyToken, checkRole(['administrador', 'soporte']), ticketController.getTicketsByUnitId);
 
 
 // rutas para obtener los tipos: 

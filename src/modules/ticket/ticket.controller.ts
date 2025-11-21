@@ -383,19 +383,56 @@ export const ticketController = {
     },
     // TODO: controlador para obtener los tickets por unidad - estado: (falta revisar)
     // ! FALTA REVISAR (desarrollar)
-    getTicketsByUnitId: async (req: AuthRequest, res: Response) => {
-        const unidadId = parseIdParam(req.params.unidad_id);
-        if (unidadId === null) {
-            return sendResponse(res, 400, 'ID de unidad inválido');
+    getTicketsByUnit: async (req: AuthRequest, res: Response) => {
+        // primero obtenemos la info del token
+        const usuario_id = req.user!.id;
+        const tipo_unidad = req.user!.tipo_unidad
+
+        if (!tipo_unidad) {
+            return sendResponse(res, 400, 'El usuario no tiene una unidad asignada');
         }
-        const result = await ticketService.getTicketsByUnitId(unidadId);
-        if (result.status === 'empty') {
-            return sendResponse(res, 404, 'No se encontraron tickets para la unidad especificada');
+        log.info({ usuario_id, tipo_unidad }, 'Obteniendo tickets por unidad');
+
+        // independiente el rol, si el administrador es unidad soporte, obtiene todos los tickets de la unidad soporte
+        try {
+            if (tipo_unidad === 'soporte') {
+                const tipo_unidad_id = 1
+                const result = await ticketService.getTicketsByUnit(tipo_unidad_id);
+
+                if (result.status === 'empty') {
+                    return sendResponse(res, 404, 'No se encontraron tickets para la unidad soporte');
+                }
+                if (result.status === 'error') {
+                    return sendResponse(res, 500, result.message);
+                }
+                return sendResponse(res, 200, 'Tickets de la unidad soporte obtenidos correctamente', { tickets: result.data });
+            }
+            if (tipo_unidad === 'infraestructura') {
+                const tipo_unidad_id = 2
+                const result = await ticketService.getTicketsByUnit(tipo_unidad_id);
+                if (result.status === 'empty') {
+                    return sendResponse(res, 404, 'No se encontraron tickets para la unidad infraestructura');
+                }
+                if (result.status === 'error') {
+                    return sendResponse(res, 500, result.message);
+                }
+                return sendResponse(res, 200, 'Tickets de la unidad infraestructura obtenidos correctamente', { tickets: result.data });
+            }
+            if (tipo_unidad === 'desarrollo') {
+                const tipo_unidad_id = 3
+                const result = await ticketService.getTicketsByUnit(tipo_unidad_id);
+                if (result.status === 'empty') {
+                    return sendResponse(res, 404, 'No se encontraron tickets para la unidad desarrollo');
+                }
+                if (result.status === 'error') {
+                    return sendResponse(res, 500, result.message);
+                }
+                return sendResponse(res, 200, 'Tickets de la unidad desarrollo obtenidos correctamente', { tickets: result.data });
+            }
+        } catch (error) {
+            log.error({ error }, 'Error al obtener tickets por unidad');
+            return sendResponse(res, 500, 'Error al obtener tickets por unidad');
         }
-        if (result.status === 'error') {
-            return sendResponse(res, 500, result.message);
-        }
-        return sendResponse(res, 200, 'Tickets obtenidos correctamente', { result: result.data });
     },
     // TODO: controlador para obtener los tipos - estado: ✅
     getStatusType: async (req: Request, res: Response) => {
