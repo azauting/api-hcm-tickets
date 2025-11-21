@@ -1,21 +1,15 @@
-import type { Ticket, TicketCreateDTO, TicketDetalleObservacion, TicketMovimiento, TipoEstado, TipoEvento, TipoOrigen, TipoPrioridad, TipoUnidad, Ubicacion, ticketDetalleAsignar, TicketDetalle } from '../../utils/interfaces';
+import type { Ticket, TicketCreateDTO, TicketDetalleObservacion, TipoEstado, TipoEvento, TipoOrigen, TipoPrioridad, TipoUnidad, Ubicacion, TicketDetalle } from '../../utils/interfaces';
 import type { ResultSetHeader } from 'mysql2';
 import pool from '../../config/db.config';
 import { logger } from '../../utils/logger';
-import type {
-    CreateTicketResult,
-    GetTicketResult,
-    GetTicketsType,
-    CancelTicketResult,
-    ApiResponse
-} from '../../utils/types';
-import { startTransition } from 'react';
+import type { CreateTicketResult, GetTicketResult, GetTicketsType, CancelTicketResult, ApiResponse } from '../../utils/types';
+import type { RowDataPacket } from 'mysql2';
 
 const log = logger.child({ service: 'ticketService' });
 
 
 export const ticketService = {
-    // check: creacion de ticket - terminada
+    // TODO: Crear ticket - estado: ✅
     createTicket: async (ticketObjeto: TicketCreateDTO): Promise<CreateTicketResult> => {
         log.info({ action: 'createTicketService', usuario_id_solicita: ticketObjeto.usuario_id_solicita }, 'Recibiendo datos del controller nuevo ticket');
         // primera parte, crea el ticket
@@ -54,6 +48,7 @@ export const ticketService = {
             };
         }
     },
+    // TODO: Crear ticket detalle - estado: ✅
     createTicketDetalle: async (ticketId: number): Promise<ApiResponse<TicketDetalle>> => {
         try {
             const [result] = await pool.query<ResultSetHeader>(
@@ -76,18 +71,19 @@ export const ticketService = {
             return { status: 'error', message: 'Error al crear ticket_detalle' };
         }
     },
+    // TODO: crear detalle observacion - pendiente a revisar
     ticketObservation: async (ticketId: number, observacion: string, userId: number): Promise<ApiResponse<TicketDetalleObservacion>> => {
 
         try {
             // Verificar si existe ticket_detalle para ese ticket
-            const [detalleRows] = await pool.query(
+            const [detalleRows] = await pool.query<RowDataPacket[]>(
                 `SELECT ticket_detalle_id 
                 FROM ticket_detalle 
                 WHERE ticket_id = ?`,
                 [ticketId]
             );
 
-            const detalle = (detalleRows as any)[0];
+            const detalle = detalleRows[0] as TicketDetalle
 
             if (!detalle) {
                 return { status: 'error', message: 'El ticket no tiene un detalle asociado' };
@@ -118,7 +114,7 @@ export const ticketService = {
 
         }
     },
-    // se elimina el ticket completo junto con sus detalles, observaciones e integrantes automáticamente
+    // TODO: borrar ticket completo - preguntar al hospital
     deleteTicketCompleto: async (ticketId: number): Promise<void> => {
         try {
             // 1. obtener ticket_detalle_id asociados
@@ -157,12 +153,11 @@ export const ticketService = {
             log.error({ error, ticketId }, "Error en deleteTicketCompleto");
         }
     },
-
-    // check: cancelacion de ticket - pendiente a revision
+    // TODO: REVISAR ESTO! - preguntar al hospital
     cancelTicketById: async (ticketId: number, userId: number): Promise<CancelTicketResult> => {
         try {
             // 1. Obtener ticket
-            const [rows] = await pool.query(
+            const [rows] = await pool.query<RowDataPacket[]>(
                 `SELECT ticket_id, usuario_id_solicita,
                     (SELECT fecha FROM ticket_movimiento 
                     WHERE ticket_id = ? 
@@ -172,8 +167,7 @@ export const ticketService = {
                 [ticketId, ticketId]
             );
 
-            const ticket = (rows as any)[0];
-
+            const ticket = rows[0]
             if (!ticket) {
                 return { status: "error", message: "Ticket no encontrado" };
             }
@@ -207,7 +201,7 @@ export const ticketService = {
             return { status: "error", message: "Error al cancelar el ticket" };
         }
     },
-    // check: obtener ticket por id - pendiente a terminar creacion de las demas partes del ticket
+    // TODO: ver un ticket por ID - estado: ✅
     getTicketId: async (ticketId: number): Promise<GetTicketResult> => {
         log.info({ action: 'getTicketById', ticketId }, 'Obteniendo ticket por ID');
 
@@ -217,14 +211,18 @@ export const ticketService = {
         }
 
         try {
-            const [rows] = await pool.query(
+            const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
                 `SELECT * FROM ticket WHERE ticket_id = ?`,
                 [ticketId]
             );
             // si no hay filas, retornar no encontrado
             // si hay filas, retornar el ticket
-            const tickets = rows as Ticket[];
-            const ticket = tickets[0];
+            const ticket = rows[0];
+
+            if (!ticket) {
+                log.warn({ ticketId }, 'Ticket no encontrado');
+                return { status: 'not_found', message: 'Ticket no encontrado' };
+            }
 
             log.info({ ticketId }, 'Ticket obtenido correctamente');
             return { status: 'ok', ticket };
@@ -234,8 +232,8 @@ export const ticketService = {
             return { status: 'error', message: 'Error al obtener el ticket' };
         }
     },
-    // check : obtener todos mis tickets 
-    getAllTicket: async (userId: number, params: { page: number; limit: number; offset: number; filters: any }): Promise<GetTicketsType> => {
+    // TODO: ver mis tickets creados - estado: ✅
+    getAllTicketByUserId: async (userId: number, params: { page: number; limit: number; offset: number; filters: any }): Promise<GetTicketsType> => {
 
         const { page, limit, offset, filters } = params;
 
@@ -307,7 +305,7 @@ export const ticketService = {
             return { status: 'error', message: 'error al obtener los tickets' };
         }
     },
-    // check: admin revisa el ticket - en desarrollo
+    // TODO: actualizar ticket por admin - estado: ✅
     updateTicketAdmin: async (ticketId: number, updateData: any) => {
         try {
             // si no viene nada para actualizar
@@ -323,22 +321,22 @@ export const ticketService = {
             if (result.affectedRows === 0) {
                 return { status: 'not_found', message: 'Ticket no encontrado' };
             }
-            // todo ok
             return { status: 'ok' };
         } catch (error) {
             log.error({ error, ticketId, updateData }, 'Error en updateTicketAdmin');
             return { status: 'error', message: 'No se pudo actualizar el ticket' };
         }
     },
-    // check: asignar ticket a soporte - en desarrollo
+    // TODO: asignar soporte a ticket - estado: ✅ (FALTA REVISAR)
     assignTicket: async (ticket_id: number, soporte_asignado: number) => {
+        log.info({ action: 'assignTicket', ticket_id, soporte_asignado }, 'Asignando soporte al ticket');
         try {
-            const [rows] = await pool.query(
+            const [rows] = await pool.query<RowDataPacket[]>(
                 `SELECT ticket_detalle_id FROM ticket_detalle WHERE ticket_id = ?`,
                 [ticket_id]
             );
 
-            const detalle = (rows as any)[0];
+            const detalle = rows[0]
 
             if (!detalle) {
                 return {
@@ -364,8 +362,114 @@ export const ticketService = {
             return {status: 'error', message: 'Error interno al asignar soporte'};
         }
     },
+    // TODO: crear detalle integrante - estado: ✅ (FALTA REVISAR)
+    addTicketMember: async (ticket_id: number, usuario_id: number, usuario_id_solicitante: number) => {
+        log.info({ action: 'addTicketMember', ticket_id, usuario_id, usuario_id_solicitante }, 'Agregando integrante al ticket');
+        try {
+            // 1. Verificar si el ticket tiene detalle
+            const [detalleRows] = await pool.query<RowDataPacket[]>(
+                `SELECT ticket_detalle_id FROM ticket_detalle WHERE ticket_id = ?`,
+                [ticket_id]
+            );
+            const detalle = detalleRows[0];
 
-    // TODO :SERVICES PARA LOS ESTADOS, PRIORIDADES, ORIGEN, EVENTO, UNIDAD, UBICACION
+            if (!detalle) {
+                return { status: 'not_found', message: 'El ticket no tiene un detalle asociado' };
+            }   
+            // verificamos si existe la tabla ticket_detalle_integrante para ese ticket_detalle_id y usuario_id
+            const [existingRows] = await pool.query<RowDataPacket[]>(
+                `SELECT ticket_detalle_integrante_id
+                FROM ticket_detalle_integrante
+                WHERE ticket_detalle_id = ? AND usuario_id = ?`,
+                [detalle.ticket_detalle_id, usuario_id]
+            );
+            // si ya existe, retornamos error
+            if (existingRows.length > 0) {
+                return { status: 'error', message: 'El integrante ya está asignado al ticket' };
+            }
+            // 2. Si no existe, insertamos el nuevo integrante
+            const [insertResult] = await pool.query<ResultSetHeader>(
+                `INSERT INTO ticket_detalle_integrante 
+                (ticket_detalle_id, usuario_id)
+                VALUES (?, ?, ?)`,
+                [detalle.ticket_detalle_id, usuario_id]
+            );
+            if (insertResult.affectedRows === 0) {
+                return { status: 'error', message: 'No se pudo agregar el integrante' };
+            }
+            return { status: 'ok', ticket_detalle_integrante_id: insertResult.insertId };
+        } catch (error) {
+            log.error({ error, ticket_id, usuario_id, usuario_id_solicitante }, 'Error al agregar integrante al ticket');
+            return { status: 'error', message: 'Error al agregar el integrante' };
+        }
+    },
+    // TODO: actualizar ticket por soporte/administrador - estado: ✅ (FALTA REVISAR)
+    updateTicketSupport: async (ticketId: number, updateData: any) => {
+        log.info({ action: 'updateTicketSupport', ticketId, updateData }, 'Actualizando ticket por soporte/administrador');
+        try {
+            // si no viene nada para actualizar
+            if (!updateData || typeof updateData !== 'object') {
+                return { status: 'error', message: 'Datos inválidos' };
+            }
+            // ejecuta el update directo
+            const [result] = await pool.query<ResultSetHeader>(
+                'UPDATE ticket SET ? WHERE ticket_id = ?',
+                [updateData, ticketId]
+            );
+            // si el ticket no existe
+            if (result.affectedRows === 0) {
+                return { status: 'not_found', message: 'Ticket no encontrado' };
+            }
+            return { status: 'ok', message: 'Ticket actualizado correctamente' };
+        } catch (error) {
+            log.error({ error, ticketId, updateData }, 'Error en updateTicketSupport');
+            return { status: 'error', message: 'No se pudo actualizar el ticket' };
+        }
+    },
+    // TODO MOSTRAR TODOS LOS TICKETS CON estado_revision = 0 (significa sin revisar)
+    getUnreviewedTickets: async (): Promise<ApiResponse<Ticket>> => {
+        log.info({ action: 'getUnreviewedTickets' }, 'Obteniendo tickets sin revisar');
+        try {
+            const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
+                `SELECT * FROM ticket WHERE estado_de_revision = 0
+                ORDER BY ticket_id DESC`
+            );
+            const tickets = rows as Ticket[];
+            if (!tickets.length) {
+                log.warn('No se encontraron tickets sin revisar');
+                return { status: 'empty' };
+            }
+            log.info('Tickets sin revisar obtenidos correctamente');
+            return { status: 'ok', data: tickets };
+        } catch (error) {
+            log.error({ error }, 'Error al obtener tickets sin revisar');
+            return { status: 'error', message: 'Error al obtener tickets sin revisar' };
+        }
+    },
+    // TODO: service para obtener los tickets por unidad - estado: ✅
+    getTicketsByUnitId: async (unidad_id: number): Promise<ApiResponse<Ticket>> => {
+        log.info({ action: 'getTicketsByUnitId', unidad_id }, 'Obteniendo tickets por unidad');
+        try {
+            const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
+                `SELECT * FROM ticket WHERE ubicacion_id = ?`,
+                [unidad_id]
+            );  
+            const tickets = rows as Ticket[];
+
+            if (!tickets.length) {
+                log.warn({ unidad_id }, 'No se encontraron tickets para esta unidad');
+                return { status: 'empty' };
+            }
+
+            log.info({ unidad_id }, 'Tickets obtenidos correctamente');
+            return { status: 'ok', data: tickets };
+
+        } catch (error) {
+            log.error({ error, unidad_id }, 'Error al obtener tickets por unidad');
+            return { status: 'error', message: 'Error al obtener tickets por unidad' };
+        }
+    },
+    // TODO :SERVICES PARA LOS ESTADOS, PRIORIDADES, ORIGEN, EVENTO, UNIDAD, UBICACION - estado: ✅
     getAllTipoEstado: async (): Promise<ApiResponse<TipoEstado>> => {
         log.info({ action: 'getAllTipoEstado' }, 'Obteniendo todos los tipos de estado');
 
@@ -506,9 +610,4 @@ export const ticketService = {
         }
 
     },
-
-
-
-
-
 }

@@ -6,88 +6,36 @@ import { checkRole } from '../../middlewares/checkRole';
 const router = express.Router();
 
 
-
-
-// check: ruta para crear un ticket - estado: terminada 
-router.post('/tickets', verifyToken, ticketController.createTicket)
-
-// check: ruta para que el administrador revise el ticket - estado: pendiente a revision
-// analizar: esta ruta puede tener una condicion para que solo el admin pueda cambiar ciertos campos 
-// si es un soporte, solo puede cambiar el estado a "en proceso" o "cerrado"
-router.patch('/tickets/:id/review', verifyToken, checkRole(['administrador']), ticketController.updateTicketAdmin)
-
-// (dato): luego de que el admin revise el ticket, puede asignarselo un soporte encargado o dejarlo sin asignar, aqui se usa esta ruta (abajo)
-// check: ruta para asignarse un ticket sin asignar - estado: pendiente a revision
-
-
-router.post('/tickets/:id/assign',verifyToken,checkRole(['soporte', 'administrador']),ticketController.assignTicket);
-
-
-
-// - seba ruta /observacion - insert tabla ticket_detalle_observacion - //todo : en desarrollo (listo)
+// * POST Routes
+// ! REVISAR SI TIENEN AUDITORIA/LOGS
+// ! REVISAR SI FUNCIONAN CORRECTAMENTE
+// TODO: crear ticket - estado: ✅
+router.post('/tickets', verifyToken, ticketController.createTicket); 
+// TODO: crear detalle observacion  - estado: ✅ (falta desarrollar)
 router.post('/tickets/:id/detalle/observacion', verifyToken, checkRole(['soporte', 'administrador']), ticketController.addTicketObservation);
+// TODO: crear detalle integrante - estado : ✅ (falta revisar)
+router.post('/tickets/:id/detalle/integrante', verifyToken, checkRole(['soporte', 'administrador']), ticketController.addTicketMember);
 
-// check: ruta para agregar un integrante al ticket detalle - pendiente a revision //todo : pendiente
-router.post('/tickets/:id/detalle/integrante', verifyToken, checkRole(['soporte', 'administrador']));
+// * PATCH Routes
+// ! REVISAR SI TIENEN AUDITORIA/LOGS
+// ! REVISAR SI FUNCIONAN CORRECTAMENTE
+// TODO: revisar ticket por el admin - estado: ✅
+router.patch('/tickets/:id/review',verifyToken,  checkRole(['administrador']),  ticketController.updateTicketAdmin); 
+// TODO: asignar ticket por el admin o soporte - estado: ✅
+router.patch('/tickets/:id/assign',verifyToken,checkRole(['soporte', 'administrador']),ticketController.assignTicket);
+// TODO: cambios del ticket por parte del soporte - administrador - estado: ✅ (falta desarrollar)
+router.patch('/tickets/:id/update', verifyToken, checkRole(['soporte', 'administrador']), ticketController.updateTicketSupport);
 
-// - seba ruta /integrante - insert tabla ticket_detalle_integrante //todo : pendiente
-// - seba ruta ticket sin revisar (para los administradores)
-// check: ruta para agregar una observacion al ticket detalle - pendiente a revision
-
-
-
-
-// ruta para cerrar el ticket - pendiente a revision
-//router.patch('/tickets/:id/close', verifyToken, checkRole (['soporte', 'administrador']), ticketController.closeTicket);
-// en este ruta se debe editar la respuesta del ticket detalle y cerrar el ticket
-
-// # rutas get
-
-// check: ruta para ver los tickets sin revisar
-router.get('/tickets/sin-revisar', verifyToken, checkRole(['administrador']))
-
-// check: ruta para ver mis tickets (usuarios) - listo
-router.get('/tickets/mis-tickets', verifyToken, ticketController.getTickets);
-
-// check: ruta para ver un ticket por ID - pendiente a revision
-router.get('/tickets/:id', verifyToken, ticketController.getTicketById)
-
-
-
-// ruta para ver los tickets por unidad 
-router.get('/tickets/unidad/:unidad_id', verifyToken, checkRole(['administrador', 'soporte']), (req, res) => {
-    res.json({ message: 'Ruta para obtener los tickets por unidad - en desarrollo' });
-    // obtenemos la informacion del usuario desde el token
-    // verificamos la unidad del usuario
-    // llamamos al servicio para mostrar los ticket de su unidad 
-    // funcion(unidad_id) -> el servicio recibe la unidad id y hace la consulta en base ese id
-    // retornamos los tickets
-    // paginacion y filtros (estado/pioridad/tipo)
-});
-
-
-// al terminar las anterior rutas, agregar las siguientes rutas:
-// ruta para asignarse un ticket sin asignar
-router.post('/tickets/:id/asignarse', verifyToken, checkRole(['soporte']), (req, res) => {
-    res.json({ message: 'Ruta para asignarse un ticket sin asignar - en desarrollo' });
-    // obtener el ticket id
-    // llamamos al servicio para crear el ticket detalle
-    // 
-});
-
-// ruta para agregar una obtervacion al ticket detalle
-router.post('/tickets/:id/detalle/observacion', verifyToken, checkRole(['soporte', 'administrador']), (req, res) => {
-    res.json({ message: 'Ruta para agregar una observación al ticket detalle - en desarrollo' });
-    // obtener el ticket id 
-    // llamamos al servicio para crear la observacion
-});
-
-// ruta para agregar un integrante al ticket detalle
-router.post('/tickets/:id/detalle/integrante', verifyToken, checkRole(['soporte', 'administrador']), (req, res) => {
-    res.json({ message: 'Ruta para agregar un integrante al ticket detalle - en desarrollo' });
-    // obtener el ticket id 
-    // llamamos al servicio para crear el integrante
-});
+// * GET Routes
+// ! REVISAR SI FUNCIONAN CORRECTAMENTE
+// TODO: ruta para ver los tickets sin revisar - estado : ✅ (falta revisar)
+router.get('/tickets/sin-revisar', verifyToken, checkRole(['administrador']), ticketController.getUnreviewedTickets);
+// TODO : ruta para ver mis tickets creados - estado: ✅
+router.get('/tickets/mis-tickets', verifyToken, ticketController.getTicketsByUserId);
+// TODO: ruta para ver un ticket especifico - pendiente a revision
+router.get('/tickets/:id', verifyToken, ticketController.getTicketById);
+// TODO: ruta para ver los tickets por unidad - estado: : ✅
+router.get('/tickets/revisados/:unidad_id', verifyToken, checkRole(['administrador', 'soporte']), ticketController.getTicketsByUnitId);
 
 
 // rutas para obtener los tipos: 
@@ -99,70 +47,5 @@ router.get('/tickets/tipo_origen', verifyToken, ticketController.getOriginType);
 router.get('/tickets/tipo_evento', verifyToken, ticketController.getEventType)
 router.get('/tickets/ubicacion', verifyToken, ticketController.getLocationType);
 router.get('/tickets/tipo_unidad', verifyToken, ticketController.getUnityType)
-
-
-/*
-
-router.get('/tickets/types/:type', verifyToken)
-router.get('/tickets/types', verifyToken)
-
-
-// ruta para obtener un ticket por ID
-//router.get('/tickets/:id', verifyToken, getTicketById)
-
-// ruta para obtener todos los tickets sin revisar
-router.get('/tickets', verifyToken, (req, res) => {
-    res.json({ message: 'Ruta para obtener todos los tickets sin revisar - en desarrollo' });
-});
-
-// en estas rutas puedes filtrar por estado/pioridad/sin asignar
-// ruta para obtener todo los tickeks por unidad 
-
-
-// ruta para administrador
-// ruta para actualizar un ticket base estado/pioridad/soporte-encargado/unidad
-// primero revisa el ticket para el administrador // solo la usa el administrador
-router.put('/tickets/:id', verifyToken, (req, res) => {
-    res.json({ message: 'Ruta para actualizar un ticket (admin) - en desarrollo' });
-});
-
-
-// rutas para ticket detalle
-// ruta para asignar el soporte encargado del ticket // respuesta = null // puede usarla el administrador y soporte
-
-router.post('/tickets/:id/detalle', (req, res) => {
-    res.json({ message: 'Ruta para asignar soporte encargado del ticket - en desarrollo' });
-});
-
-
-// ruta para obtener el ticket detalle
-router.get('/tickets/:id/detalle', (req, res) => {
-    res.json({ message: 'Ruta para obtener el ticket detalle - en desarrollo' });
-});
-
-// ruta para actualizar ticket detalle // para agregar la respuesta
-router.patch('/tickets/:id/detalle', (req, res) => {
-    res.json({ message: 'Ruta para actualizar ticket detalle - en desarrollo' });
-});
-
-
-// rutas para ticket detalle observacion // puede usarla el soporte y adminsitrador 
-// ruta para crear una observacion
-router.post('/tickets/:id/detalle/observacion', (req, res) => {
-    res.json({ message: 'Ruta para crear una observación - en desarrollo' });
-});
-
-// ruta para editar observacion
-router.put('/tickets/:id/detalle/observacion/:id', (req, res) => {
-    res.json({ message: 'Ruta para editar observación - en desarrollo' });
-});
-// ruta para obtener la observacion del ticket
-
-router.get('/tickets/:id/detalle/observacion/:id', (req, res) => {
-    res.json({ message: 'Ruta para obtener observaciones del ticket - en desarrollo' });
-});
-
-
-*/
 
 export default router;
