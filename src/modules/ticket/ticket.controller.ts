@@ -1,11 +1,10 @@
 import type { Request, Response } from 'express';
-import type { AuthRequest } from '../../utils/interfaces';
 import { validadorTicketForm } from '../../utils/validatorTicketForm';
 import { ticketService } from './ticket.service';
 import { logger } from '../../utils/logger';
-import type { TicketCreateDTO, ticketDetalleAsignar } from '../../utils/interfaces';
+import type {AuthRequest,TicketCreateDTO,TicketMovimientoCreateDTO} from '../../utils/interfaces';
 import { ticketLogController } from '../ticketLog/ticketLog.controller';
-import type { TicketMovimientoCreateDTO } from '../../utils/interfaces';
+
 import { parseIdParam, sendResponse } from '../../utils/helper';
 
 const log = logger.child({ ubicacion: 'ticketController' });
@@ -17,71 +16,102 @@ export const ticketController = {
         // 1. obtener el usuario_id desde el token
         const usuario_id_solicita = req.user!.id
         log.info({ usuario_id_solicita, requestBody: req.body }, 'Recibiendo data para crear nuevo ticket');
-        // 2.  validar los datos del ticket
+
+        // 2. validar los datos del ticket
         const { isValid, message, ticket: ticketValidado } = validadorTicketForm(req.body);
-        // Si no es valido retorna un error
         if (!isValid || !ticketValidado) {
             return sendResponse(res, 400, `Datos del ticket inválidos: ${message}`);
         }
-        // Si es valido, continua el proceso
+
         log.info({ usuario_id_solicita, ticketValidado }, 'Datos del ticket validados');
-        // 3. preparar el objeto del nuevo ticket
 
-        // Antes de preparar el objeto debemos obtener la direccion IP del usuario
-
+        // 3. preparar data
         const ticketObject: TicketCreateDTO = {
-            usuario_id_solicita, // id del usuario que solicita el ticket
-            asunto: ticketValidado.asunto, // asunto del ticket
-            descripcion: ticketValidado.descripcion, // descripcion del problema
-            telefono: ticketValidado.telefono, // telefono de contacto
-            autor_problema: ticketValidado.autor_problema, // quien reporta el problema
-            ubicacion_id: ticketValidado.ubicacion_id, // todo: crear las ubicaciones
-            direccion_ip: req.ip!, // obtener la IP del request
-            estado_de_revision: 0, // por defecto en 0, cuando un admin revise el ticket se pone en 1
-            tipo_prioridad_id: 1, // por defecto en baja
-            tipo_unidad_id: 1, // por defecto en soporte
-            tipo_estado_id: 1, // por defecto en abierto
-            tipo_origen_id: 1, // revisar aqui
-            tipo_evento_id: 1, // revisar aqui
+            usuario_id_solicita,
+            asunto: ticketValidado.asunto,
+            descripcion: ticketValidado.descripcion,
+            telefono: ticketValidado.telefono,
+            autor_problema: ticketValidado.autor_problema,
+            ubicacion_id: ticketValidado.ubicacion_id,
+            direccion_ip: req.ip!,
+            estado_de_revision: 0,
+            tipo_prioridad_id: 1,
+            tipo_unidad_id: 1,
+            tipo_estado_id: 1,
+            tipo_origen_id: 1,
+            tipo_evento_id: 1,
         };
-        // cuarto paso, enviar el ticket al service para crear el ticket
-        const result = await ticketService.createTicket(ticketObject);
 
-        // quinto paso, manejar los posibles resultados
+        // 4. crear ticket
+        const result = await ticketService.createTicket(ticketObject);
         if (result.status === 'error') {
             return sendResponse(res, 500, result.message);
         }
 
-        // sexto paso, obtener el id del ticket creado y registrar el movimiento en la auditoria
         const ticket_id = result.ticket_id;
-        // crear ticket_detalle automáticamente
-        const detalle = await ticketService.createTicketDetalle(ticket_id);
 
-        // si hay un error al crear el ticket detalle, eliminamos el ticket automáticamente
+        // 5. crear ticket_detalle
+        const detalle = await ticketService.createTicketDetail(ticket_id);
         if (detalle.status === 'error') {
-            await ticketService.deleteTicketCompleto(ticket_id);
+            await ticketService.deleteFullTicket(ticket_id);
             return sendResponse(res, 500, 'Error al crear ticket_detalle');
         }
 
-
         log.info({ usuario_id_solicita, ticket_id }, 'Ticket creado');
 
-        // séptimo paso, registrar el movimiento en la auditoria
+        // 6. registrar movimiento inicial
         const objetoMovimiento: TicketMovimientoCreateDTO = {
-            ticket_id: ticket_id, // id del ticket creado
-            tipo_movimiento_id: 1, // 1 = creación de ticket
-            usuario_id: usuario_id_solicita // id del usuario que crea el ticket
+            ticket_id: ticket_id,
+            tipo_movimiento_id: 1, // creación
+            usuario_id: usuario_id_solicita,
         };
-        // octavo paso, llamar al controlador de ticket log para crear el movimiento
+
         const logResult = await ticketLogController.createTicketLog(objetoMovimiento);
-        // si todo sale bien
+
+        // ⚠️ AQUÍ ES DONDE VA EL ROLLBACK
+        if (logResult.status === "error") {
+            await ticketService.deleteFullTicket(ticket_id);
+            return sendResponse(res, 500, "Error al registrar movimiento del ticket");
+        }
+
         log.info({ ticket_id }, 'Log del ticket creado correctamente');
-        // décimo paso, retornar respuesta exitosa
-        return sendResponse(res, 201, 'Ticket creado correctamente', { ticket_id, message: logResult.message });
+
+        // 7. respuesta final
+        return sendResponse(res, 201, 'Ticket creado correctamente', {
+            ticket_id,
+            message: logResult.message
+        });
     },
+    closeTicket: async (req: AuthRequest, res: Response) => {
+        try {
+            const ticketId = parseIdParam(req.params.id);
+
+            if (ticketId === null) {
+                return sendResponse(res, 400, "El parámetro 'id' es inválido o no es numérico");
+            }
+
+            const userId = req.user!.id;
+            const userRole = req.user!.tipo_rol;  
+
+            const result = await ticketService.closeTicket(ticketId, userId, userRole);
+
+            if (result.status !== 'ok') {
+                return sendResponse(res, 400, result.message ?? "No se pudo cerrar el ticket"); 
+            }
+
+            return sendResponse(res, 200, "Ticket cerrado correctamente", {
+                ticket_id: ticketId
+            });
+
+        } catch (error) {
+            log.error({ error }, "Error en closeTicket");
+            return sendResponse(res, 500, "Error al cerrar el ticket");
+        }
+    },
+
     updateTicketAdmin: async (req: AuthRequest, res: Response) => {
         // obtenemos el id del ticket desde los parametros
-        const ticketId = Number(req.params.id);
+        const ticketId = parseIdParam(req.params.id);
         // obtenemos el id del usuario desde el token para el ticket_movimiento
         const usuario_id = req.user!.id;
         // obtenemos los campos a actualizar desde el body
@@ -89,11 +119,11 @@ export const ticketController = {
         log.info({ ticketId, updateData }, 'Recibiendo data para actualizar ticket');
         // en el middleware checkRole['administrador'] ya se valida que el usuario es admin
         // verificamos el id del ticket
-        if (!ticketId || ticketId <= 0) {
-            return sendResponse(res, 400, 'ID de ticket inválido');
+        if (ticketId === null) {
+            return sendResponse(res, 400, "ID de ticket inválido para actualización por administrador");
         }
         // llamamos al servicio para actualizar el ticket
-        const result = await ticketService.updateTicketAdmin(ticketId, updateData);
+        const result = await ticketService.updateTicketByAdmin(ticketId, updateData);
 
         if (result.status === 'not_found') {
             return sendResponse(res, 404, result.message!);
@@ -113,13 +143,14 @@ export const ticketController = {
         return sendResponse(res, 200, 'Ticket actualizado correctamente', { message: logResult.message });
     },
     assignTicket: async (req: AuthRequest, res: Response) => {
-        const ticketId = Number(req.params.id);
+        const ticketId = parseIdParam(req.params.id);
         const usuario_id = req.user!.id;
         const rol = req.user!.tipo_rol;
 
-        if (!ticketId || ticketId <= 0) {
-            return sendResponse(res, 400, 'ID de ticket inválido');
+        if (ticketId === null) {
+            return sendResponse(res, 400, "ID de ticket inválido para asignación");
         }
+
 
         let soporteAsignado: number;
 
@@ -153,60 +184,83 @@ export const ticketController = {
             soporte_asignado: soporteAsignado
         });
     },
-
     getTicketById: async (req: AuthRequest, res: Response) => {
-        const ticketId = Number(req.params.id);
+        const ticketId = parseIdParam(req.params.id);
+
+        if (ticketId === null) {
+            return sendResponse(res, 400, "ID de ticket inválido para obtener detalles");
+        }
+
+        // datos del usuario autenticado
         const userId = req.user!.id;
-        const userRole = req.user!.tipo_rol;
+        const role = req.user!.tipo_rol;
 
-        log.info({ ticketId, userId, userRole }, 'obteniendo ticket por ID');
+        const result = await ticketService.getTicketById(ticketId);
 
-        if (!ticketId || ticketId <= 0) {
-            return sendResponse(res, 400, 'ID de ticket inválido');
-        }
-
-        const result = await ticketService.getTicketId(ticketId);
-
-        if (result.status === 'error') {
-            return sendResponse(res, 500, result.message);
-        }
-
-        if (result.status === 'not_found') {
+        if (result.status === "not_found") {
             return sendResponse(res, 404, result.message);
         }
 
-        const ticket = result.ticket;
-
-        // permiso: solicitante solo ve su propio ticket
-        if (userRole === "solicitante" && ticket.usuario_id_solicita !== userId) {
-            return sendResponse(res, 403, 'No tienes permiso para ver este ticket');
+        if (result.status === "error") {
+            return sendResponse(res, 500, result.message);
         }
 
-        if (userRole === "solicitante") {
-            // si hay detalles, tomo el último elemento del array (sin suponer created_at)
-            const ultimaRespuesta = (ticket.detalles && ticket.detalles.length > 0)
-                ? ticket.detalles[ticket.detalles.length - 1].respuesta
-                : null;
+        const { ticket } = result.data;
 
-            const filteredTicket: any = {
-                ticket_id: ticket.ticket_id,
-                asunto: ticket.asunto,
-                descripcion: ticket.descripcion,
-                estado: ticket.tipo_estado_id,
-                prioridad: ticket.tipo_prioridad_id,
-                ubicacion: ticket.ubicacion_id,
-                ...(ultimaRespuesta ? { respuesta: ultimaRespuesta } : {})
-            };
+        //condiciones de acceso según rol
 
-            return sendResponse(res, 200, 'Ticket obtenido correctamente', { ticket: filteredTicket });
+        if (role === "administrador") {
+            return sendResponse(res, 200, "Ticket obtenido correctamente", result.data);
         }
 
-        // Roles admin/soporte reciben todo
-        return sendResponse(res, 200, 'Ticket obtenido correctamente', { ticket });
+
+        if (role === "soporte") {
+            const assigned = await ticketService.isSupportAssigned(ticketId, userId);
+
+            if (!assigned) {
+                return sendResponse(res, 403, "No estás asignado a este ticket");
+            }
+
+            return sendResponse(res, 200, "Ticket obtenido correctamente", result.data);
+        }
+
+
+        if (role === "solicitante") {
+
+
+            if (ticket.usuario_id_solicita !== userId) {
+                return sendResponse(res, 403, "No tienes permisos suficientes para acceder a este ticket");
+
+            }
+
+            return sendResponse(res, 200, "Ticket obtenido correctamente", result.data);
+        }
+
+        return sendResponse(res, 403, "No autorizado");
     },
+    // TODO: obtener todos los tickets (solo admin - preguntar al hospital)
+    getAllTickets: async (req: AuthRequest, res: Response) => {
+        const role = req.user!.tipo_rol;
 
+        // Solo admin puede ver todos los tickets
+        if (role !== 'administrador') {
+            return sendResponse(res, 403, "No autorizado para ver todos los tickets");
+        }
+
+        const result = await ticketService.getAllTickets();
+
+        if (result.status === "empty") {
+            return sendResponse(res, 404, "No se encontraron tickets registrados");
+        }
+
+        if (result.status === "error") {
+            return sendResponse(res, 500, result.message);
+        }
+
+        return sendResponse(res, 200, "Tickets obtenidos correctamente", { tickets: result.data });
+    },
     addTicketObservation: async (req: AuthRequest, res: Response) => {
-        const ticketId = Number(req.params.id);
+        const ticketId = parseIdParam(req.params.id);
         const userId = req.user!.id;
         const { observacion } = req.body;
 
@@ -214,7 +268,7 @@ export const ticketController = {
             return sendResponse(res, 400, 'La observación es requerida');
         }
 
-        const result = await ticketService.ticketObservation(ticketId, observacion, userId);
+        const result = await ticketService.addTicketObservation(ticketId, observacion, userId);
 
         if (result.status === 'empty') {
             return sendResponse(res, 404, 'El ticket no tiene un detalle asociado');
@@ -234,19 +288,19 @@ export const ticketController = {
         return sendResponse(res, 200, 'Observación agregada correctamente', result.data[0]
         );
     },
-
     cancelTicket: async (req: AuthRequest, res: Response) => {
-        const ticketId = Number(req.params.id);
+        const ticketId = parseIdParam(req.params.id);
         const userId = req.user!.id;
 
         log.info({ ticketId, userId }, 'Solicitando cancelación del ticket');
 
-        if (!ticketId || ticketId <= 0) {
-            return sendResponse(res, 400, 'ID de ticket inválido');
+        if (ticketId === null) {
+            return sendResponse(res, 400, "ID de ticket inválido para cancelación");
         }
 
 
-        const result = await ticketService.cancelTicketById(ticketId, userId);
+
+        const result = await ticketService.cancelTicket(ticketId, userId);
 
         // forbidden es para cuando el usuario no es el creador del ticket
         if (result.status === 'forbidden') {
@@ -260,6 +314,12 @@ export const ticketController = {
         if (result.status === 'error') {
             return sendResponse(res, 500, result.message || 'Error al cancelar ticket');
         }
+        await ticketLogController.createTicketLog({
+            ticket_id: ticketId,
+            tipo_movimiento_id: 11,
+            usuario_id: userId
+        });
+
 
         return sendResponse(res, 200, 'Ticket cancelado correctamente');
     },
@@ -282,7 +342,7 @@ export const ticketController = {
             ubicacion: req.query.ubicacion ? Number(req.query.ubicacion) : undefined, //admin
         }
 
-        const result = await ticketService.getAllTicketByUserId(userId, { page, limit, offset, filters });
+        const result = await ticketService.getTicketsByUserId(userId, { page, limit, offset, filters });
 
         if (result.status === 'empty') {
 
@@ -295,24 +355,21 @@ export const ticketController = {
 
         return sendResponse(res, 200, 'Tickets obtenidos correctamente', { tickets: result.tickets });
     },
-
-    // TODO: Controladores en desarrollo
-    // TODO: controlador para agregar integrante al ticket - estado: (falta revisar)
-    // ! FALTA REVISAR
+    // TODO: controlador para agregar integrante al ticket - estado: ✅
     addTicketMember: async (req: AuthRequest, res: Response) => {
         const ticketId = parseIdParam(req.params.id);
         const usuario_id_solicitante = req.user!.id;
         const usuario_id = req.body.usuario_id;
 
         if (ticketId === null) {
-            return sendResponse(res, 400, 'ID de ticket inválido');
+            return sendResponse(res, 400, "ID de ticket inválido para agregar integrante");
         }
 
         if (!usuario_id || typeof usuario_id !== 'number' || usuario_id <= 0) {
             return sendResponse(res, 400, 'ID de usuario inválido');
         }
 
-        const result = await ticketService.addTicketMember(ticketId, usuario_id, usuario_id_solicitante);
+        const result = await ticketService.addMemberToTicket(ticketId, usuario_id, usuario_id_solicitante);
 
         if (result.status === 'error') {
             return sendResponse(res, 500, result.message ?? 'Error al agregar integrante');
@@ -333,9 +390,7 @@ export const ticketController = {
 
         return sendResponse(res, 200, 'Integrante agregado correctamente', { ticket_detalle_integrante_id: result.ticket_detalle_integrante_id });
     },
-
-    // TODO: controlador para que el soporte o admin actualice el ticket - estado: (falta revisar)
-    // ! FALTA REVISAR
+    // TODO: controlador para que el soporte o admin actualice el ticket - estado: ✅
     updateTicketSupport: async (req: AuthRequest, res: Response) => {
         const ticketId = parseIdParam(req.params.id);
         const usuario_id = req.user!.id;
@@ -343,10 +398,11 @@ export const ticketController = {
         const body = req.body;
 
         if (ticketId === null) {
-            return sendResponse(res, 400, 'ID de ticket inválido');
+            return sendResponse(res, 400, "ID de ticket inválido para actualización por soporte");
         }
 
-        // 1️alidar que el soporte esté asignado
+
+        // validar que el soporte esté asignado
         if (role === "soporte") {
             const assigned = await ticketService.isSupportAssigned(ticketId, usuario_id);
             if (!assigned) {
@@ -354,8 +410,8 @@ export const ticketController = {
             }
         }
 
-        // 2️⃣ Llamar al servicio
-        const result = await ticketService.updateTicketSupport(ticketId, body);
+        // Llamar al servicio
+        const result = await ticketService.updateTicketBySupport(ticketId, body);
 
         if (result.status === 'not_found') {
             return sendResponse(res, 404, result.message ?? 'Ticket no encontrado');
@@ -365,10 +421,10 @@ export const ticketController = {
             return sendResponse(res, 500, result.message ?? 'Error al actualizar el ticket');
         }
 
-        // 3️⃣ Registrar movimiento (ID = 10)
+        // Registrar movimiento 
         await ticketLogController.createTicketLog({
             ticket_id: ticketId,
-            tipo_movimiento_id: 4, // respondido por soporte y cerrado
+            tipo_movimiento_id: 4, // respondido por soporte 
             usuario_id,
         });
 
@@ -376,8 +432,7 @@ export const ticketController = {
             cambios: result.cambios
         });
     },
-
-    // TODO: controlador para obtener los tickets sin revisar - estado: (falta revisar)
+    // TODO: controlador para obtener los tickets sin revisar - estado: ✅
     getUnreviewedTickets: async (req: AuthRequest, res: Response) => {
         log.info('Obteniendo tickets sin revisar');
         const result = await ticketService.getUnreviewedTickets();
@@ -390,7 +445,7 @@ export const ticketController = {
         return sendResponse(res, 200, 'Tickets sin revisar obtenidos correctamente', { tickets: result.data });
     },
     // TODO: controlador para obtener los tickets por unidad - estado: (falta revisar)
-    // ! FALTA REVISAR (desarrollar)
+    // ! FALTA REVISAR 
     getTicketsByUnit: async (req: AuthRequest, res: Response) => {
         // primero obtenemos la info del token
         const usuario_id = req.user!.id;
@@ -403,6 +458,7 @@ export const ticketController = {
 
         // independiente el rol, si el administrador es unidad soporte, obtiene todos los tickets de la unidad soporte
         try {
+
             if (tipo_unidad === 'soporte') {
                 const tipo_unidad_id = 1
                 const result = await ticketService.getTicketsByUnit(tipo_unidad_id);
@@ -444,7 +500,7 @@ export const ticketController = {
     },
     // TODO: controlador para obtener los tipos - estado: ✅
     getStatusType: async (req: Request, res: Response) => {
-        const result = await ticketService.getAllTipoEstado();
+        const result = await ticketService.getAllStatusTypes();
 
         if (result.status === 'empty') {
             return sendResponse(res, 404, "no se encontraron tipos de estado registrados");
@@ -459,7 +515,7 @@ export const ticketController = {
     },
     getPriorityType: async (req: Request, res: Response) => {
 
-        const result = await ticketService.getAllTipoPrioridad();
+        const result = await ticketService.getAllPriorityTypes();
 
         if (result.status === 'empty') {
             return sendResponse(res, 404, "no se encontraron tipos de prioridad")
@@ -472,7 +528,7 @@ export const ticketController = {
         return sendResponse(res, 200, "tipos de prioridad obtenidos correctamente", { prioridades: result.data })
     },
     getOriginType: async (req: Request, res: Response) => {
-        const result = await ticketService.getAllTipoOrigen();
+        const result = await ticketService.getAllOriginTypes();
 
         if (result.status === 'empty') {
             return sendResponse(res, 404, "no se encontraron tipos de origen")
@@ -486,7 +542,7 @@ export const ticketController = {
         return sendResponse(res, 200, "tipos de origen obtenidos correctamente", { origen: result.data })
     },
     getEventType: async (req: Request, res: Response) => {
-        const result = await ticketService.getAllTipoEvento();
+        const result = await ticketService.getAllEventTypes();
 
         if (result.status === 'empty') {
             return sendResponse(res, 404, "no se encontraron tipos de eventos")
@@ -499,7 +555,7 @@ export const ticketController = {
         return sendResponse(res, 200, "tipos de eventos obtenidos correctamente", { eventos: result.data });
     },
     getLocationType: async (req: Request, res: Response) => {
-        const result = await ticketService.getAllUbicacion();
+        const result = await ticketService.getAllLocationTypes();
 
         if (result.status === 'empty') {
             return sendResponse(res, 404, "no se encontraron las ubicaciones")
@@ -512,7 +568,7 @@ export const ticketController = {
         return sendResponse(res, 200, 'ubicaciones obtenidas correctamente', { ubicaciones: result.data });
     },
     getUnityType: async (req: Request, res: Response) => {
-        const result = await ticketService.getAllUnidad();
+        const result = await ticketService.getAllUnitTypes();
 
         if (result.status === 'empty') {
 
@@ -526,28 +582,77 @@ export const ticketController = {
 
         return sendResponse(res, 200, 'Tipos de unidad obtenidos correctamente', { unidades: result.data });
     },
+    getTicketDetailsById: async (req: AuthRequest, res: Response) => {
+        try {
+            const ticketId = parseIdParam(req.params.id);
+
+            if (ticketId === null) {
+                return sendResponse(res, 400, "ID de ticket inválido para obtener detalle");
+            }
+
+            const detalle = await ticketService.getTicketDetailsById(ticketId);
+
+            if (detalle.status !== "ok" || !detalle.data || detalle.data.length === 0) {
+                return sendResponse(res, 404, "No se encontró detalle para el ticket");
+            }
+
+            return sendResponse(res, 200, "Detalle obtenido correctamente", { detalle: detalle.data });
+
+        } catch (error) {
+            log.error({ error }, "Error en getTicketDetailsById");
+            return sendResponse(res, 500, "Error al obtener el detalle del ticket");
+        }
+    },
+    getTicketObservationsById: async (req: AuthRequest, res: Response) => {
+        try {
+            const ticketId = parseIdParam(req.params.id);
+
+            if (ticketId === null) {
+                return sendResponse(res, 400, "ID de ticket inválido para obtener observaciones");
+            }
+
+
+            const observaciones = await ticketService.getTicketObservationsById(ticketId);
+
+            if (observaciones.status !== "ok" || !observaciones.data || observaciones.data.length === 0) {
+                return sendResponse(res, 404, "No se encontraron observaciones para este ticket");
+            }
+
+            return sendResponse(res, 200, "Observaciones obtenidas correctamente", { observaciones: observaciones.data });
+
+
+        } catch (error) {
+            log.error({ error }, "Error en getTicketObservationsById");
+            return sendResponse(res, 500, "Error al obtener las observaciones del ticket");
+        }
+    },
+    getTicketMembersById: async (req: AuthRequest, res: Response) => {
+        try {
+            const ticketId = parseIdParam(req.params.id);
+
+            if (ticketId === null) {
+                return sendResponse(res, 400, "ID de ticket inválido para obtener integrantes");
+            }
+
+
+            const integrantes = await ticketService.getTicketMembersById(ticketId);
+
+            if (integrantes.status !== "ok" || !integrantes.data || integrantes.data.length === 0) {
+                return sendResponse(res, 404, "No se encontraron integrantes para este ticket");
+            }
+
+            return sendResponse(res, 200, "Integrantes obtenidos correctamente", { integrantes: integrantes.data });
+
+
+        } catch (error) {
+            log.error({ error }, "Error en getTicketMembersById");
+            return sendResponse(res, 500, "Error al obtener los integrantes del ticket");
+        }
+    },
+
 }
 
 
 
-
-
-/* EN CONSTRUCCION */
-
-// metodo para obtener todos los tipos
-/*const getTicketTypes = async (req: Request, res: Response) => {
-    const type = req.params.type;
-    const result = await ticketService.getAllTicketTypes();
-    if (result.status === 'error') {
-        return res.status(500).json({ message: result.message });
-    }
-    if (result.status === 'empty') {
-        return res.status(404).json({ message: 'No se encontraron tipos de ticket' });
-    }
-    return res.status(200).json({
-        message: 'Tipos de ticket obtenidos correctamente',
-        data: result.tipos,
-    });
-}; */
 
 

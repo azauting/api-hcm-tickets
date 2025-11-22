@@ -1,5 +1,6 @@
 import express from 'express';
 import { verifyToken } from '../../middlewares/verifyToken';
+import { ticketLogController } from './ticketLog.controller';
 
 
 const router = express.Router();
@@ -13,5 +14,11 @@ router.get('/ticket-logs', verifyToken, (req, res) => {
 });
 // editar y manipulacion de los logs para el final
 
-// el crear un log se hace automaticamente en el controller del ticket y al editar el ticket
+
+router.get('/tickets/:id/movimientos', verifyToken, ticketLogController.getTicketMovements);
+
+router.get('/tickets/:id/movimientos/recientes', verifyToken, ticketLogController.getLatestTicketMovement);
+
+
+
 export default router;

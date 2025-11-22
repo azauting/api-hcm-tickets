@@ -1,6 +1,7 @@
 import type { Request } from 'express';
 import type { JWTPayload as JoseJWTPayload } from 'jose';
 
+
 // MODELOS DE LA BASE DE DATOS
 // Usuario
 export interface User {
@@ -66,6 +67,13 @@ export interface Ticket {
     ubicacion_id: number;
 }
 
+export interface TicketFullData {
+    ticket: Ticket;
+    detalle: TicketDetalle | null;
+    observaciones: TicketDetalleObservacion[];
+    integrantes: any[];
+}
+
 
 // Ticket detalle y subtablas
 export interface TicketDetalle {
@@ -75,18 +83,14 @@ export interface TicketDetalle {
     soporte_asignado: number | null;
 }
 
-// ticket con ticket detalle
-export interface TicketConDetalle extends Ticket {
-    detalles: TicketDetalle[];
-}
-
-
 export interface TicketDetalleObservacion {
     ticket_detalle_observacion_id: number;
     ticket_detalle_id: number;
     observacion: string;
     usuario_id: number;
 }
+
+
 
 export interface TicketDetalleIntegrante {
     ticket_detalle_integrante_id: number;
@@ -108,6 +112,9 @@ export interface TicketMovimiento {
     usuario_id: number;
     fecha: Date; // 
 }
+
+
+
 
 // INTEFACES PARA EL AUTH
 
@@ -171,7 +178,7 @@ export interface TicketMovimientoCreateDTO {
     usuario_id: number;
 }
 
-export interface paginationInfo{
+export interface paginationInfo {
     page: number;
     limit: number;
     count: number;
