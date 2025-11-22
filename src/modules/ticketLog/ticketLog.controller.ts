@@ -8,6 +8,7 @@ const log = logger.child({ ubicacion: 'ticketLogController' });
 
 export const ticketLogController = {
 
+    //crear ticket log
     createTicketLog: async (objetoMovimiento: TicketMovimientoCreateDTO) => {
         log.info({ objetoMovimiento }, 'Obteniendo data para crear ticket movimiento log');
 
