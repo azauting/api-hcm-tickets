@@ -1,3 +1,4 @@
+// src/middlewares/verifyToken.ts
 import type { Request, Response, NextFunction } from 'express';
 import { jwtVerify } from 'jose';
 import { sendResponse } from '../utils/helper';
@@ -7,31 +8,50 @@ import { logger } from '../utils/logger';
 
 const log = logger.child({ middleware: 'verifyToken' });
 
-const JWT_SECRET_RAW = process.env.JWT_SECRET;
+let cachedJwtKey: Uint8Array | null = null;
 
-if (!JWT_SECRET_RAW) {
-    throw new Error('FATAL: JWT_SECRET no configurado');
+function getJwtSecret(): Uint8Array {
+    // Si ya lo cacheamos, retorno eso
+    if (cachedJwtKey) return cachedJwtKey;
+
+    const raw = process.env.JWT_SECRET;
+    if (!raw) {
+        if (process.env.NODE_ENV === 'production') {
+            // En producción no permitimos continuar sin secreto
+            throw new Error('FATAL: JWT_SECRET no configurado');
+        }
+        // En desarrollo: usamos un secreto por defecto para no bloquear despliegues de pruebas.
+        const dev = 'dev-temporal-no-usar-en-prod';
+        log.warn('JWT_SECRET no encontrado — usando secreto de desarrollo (NO USAR EN PRODUCCIÓN)');
+        cachedJwtKey = new TextEncoder().encode(dev);
+        return cachedJwtKey;
+    }
+
+    cachedJwtKey = new TextEncoder().encode(raw);
+    return cachedJwtKey;
 }
-
-const JWT_SECRET = new TextEncoder().encode(JWT_SECRET_RAW);
 
 export const verifyToken = async (
     req: AuthRequest,
     res: Response,
     next: NextFunction
 ) => {
-    const authHeader = req.headers.authorization;
-    // Verificar formato del token
-    if (!authHeader?.startsWith('Bearer ')) {
-        log.warn('Token de autenticación requerido');
-        return sendResponse(res, 401, 'Token de autenticación requerido');
-    }
-    const token = authHeader.split(' ')[1];
-    if (!token) {
-        return sendResponse(res, 401, 'Token de autenticación requerido');
-    }
-
     try {
+        const authHeader = req.headers.authorization;
+        // Verificar formato del token
+        if (!authHeader?.startsWith('Bearer ')) {
+            log.warn('Token de autenticación requerido');
+            return sendResponse(res, 401, 'Token de autenticación requerido');
+        }
+        const token = authHeader.split(' ')[1];
+        if (!token) {
+            return sendResponse(res, 401, 'Token de autenticación requerido');
+        }
+
+        // Obtener secreto en runtime (puede lanzar en production si no existe)
+        const JWT_SECRET = getJwtSecret();
+
+        // Verificamos token
         const { payload } = (await jwtVerify(token, JWT_SECRET)) as { payload: JWTPayload };
 
         req.user = {
@@ -40,12 +60,11 @@ export const verifyToken = async (
             tipo_rol: payload.tipo_rol,
             tipo_unidad: payload.tipo_unidad,
         };
-        console.log(req.user);
+
         log.info({ correo: req.user.correo }, 'Token verificado correctamente');
         next();
     } catch (error) {
-        log.warn({ error }, 'Token inválido o expirado');
+        log.warn({ error }, 'Token inválido o expirado / error verificación');
         return sendResponse(res, 401, 'Token inválido o expirado');
     }
 };
-

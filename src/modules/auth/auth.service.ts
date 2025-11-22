@@ -1,3 +1,4 @@
+// src/services/auth/auth.service.ts  (o donde tengas este archivo)
 import { logger } from '../../utils/logger';
 import pool from '../../config/db.config';
 import bcrypt from 'bcryptjs';
@@ -8,9 +9,27 @@ import type { Credentials, VerifyResult } from '../../utils/types';
 
 const log = logger.child({ ubicacion: 'authService' });
 
-const JWT_SECRET_RAW = process.env.JWT_SECRET;
-export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '2h';
-export const JWT_SECRET = JWT_SECRET_RAW ? new TextEncoder().encode(JWT_SECRET_RAW) : null;
+/**
+ * Helper seguro para obtener el secreto JWT en runtime.
+ * - Lanza error en production si no está configurado.
+ * - En entornos no-production devuelve null (o puedes devolver un secreto dev opcional).
+ */
+function getJwtSecret(): Uint8Array | null {
+    const raw = process.env.JWT_SECRET;
+    if (!raw && process.env.NODE_ENV === 'production') {
+        throw new Error('JWT_SECRET no configurado en el servidor (production)');
+    }
+    // Si estás en dev y no existe, retornamos null y el caller decide (o puedes devolver un secreto dev)
+    return raw ? new TextEncoder().encode(raw) : null;
+}
+
+/**
+ * TTL por defecto si no se pasa JWT_EXPIRES_IN en env.
+ * Puede ser '1h', '24h', o segundos en string, jose acepta ambos.
+ */
+function getJwtExpiresIn(): string {
+    return process.env.JWT_EXPIRES_IN ?? '24h';
+}
 
 export const AuthService = {
     /**
@@ -22,21 +41,19 @@ export const AuthService = {
         try {
             const [rows] = await pool.query<(UserWithRole & RowDataPacket)[]>(
                 `SELECT 
-                    u.usuario_id,
-                    u.nombre_completo,
-                    u.correo,
-                    u.contrasena,
-                    r.nombre_rol AS tipo_rol,
-                    tu.tipo_unidad AS tipo_unidad
-                FROM usuario u
-                INNER JOIN tipo_rol r ON u.rol_id = r.rol_id
-                LEFT JOIN tipo_unidad tu ON u.unidad_id = tu.unidad_id
-                WHERE u.correo = ?`, [credentials.correo]
+            u.usuario_id,
+            u.nombre_completo,
+            u.correo,
+            u.contrasena,
+            r.nombre_rol AS tipo_rol,
+            tu.tipo_unidad AS tipo_unidad
+        FROM usuario u
+        INNER JOIN tipo_rol r ON u.rol_id = r.rol_id
+        LEFT JOIN tipo_unidad tu ON u.unidad_id = tu.unidad_id
+        WHERE u.correo = ?`, [credentials.correo]
             );
 
-
             const user = rows[0];
-            console.log(user)
             if (!user) {
                 log.warn({ correo: credentials.correo }, 'Usuario no encontrado');
                 return { status: 'not_found' };
@@ -60,8 +77,25 @@ export const AuthService = {
      * Genera un token de autenticación JWT
      */
     async createAuthToken(user: UserWithRole): Promise<string> {
+        const JWT_SECRET = getJwtSecret();
         if (!JWT_SECRET) {
-            throw new Error('JWT secret no configurado en el servidor');
+            // En dev: puedes permitir un secreto por defecto (menos seguro), o preferir fallar.
+            if (process.env.NODE_ENV === 'production') {
+                throw new Error('JWT secret no configurado en el servidor (production)');
+            } else {
+                // opcional: use a dev secret to continue working in development
+                const devSecret = 'dev-temporal-no-usar-en-prod';
+                log.warn('Usando JWT secret de desarrollo (no usar en producción)');
+                return new SignJWT({
+                    id: user.usuario_id,
+                    correo: user.correo,
+                    tipo_rol: user.tipo_rol,
+                    tipo_unidad: user.tipo_unidad ?? null,
+                })
+                    .setProtectedHeader({ alg: 'HS256' })
+                    .setExpirationTime(getJwtExpiresIn())
+                    .sign(new TextEncoder().encode(devSecret));
+            }
         }
 
         const payload: JWTPayload = {
@@ -73,7 +107,7 @@ export const AuthService = {
 
         return new SignJWT(payload)
             .setProtectedHeader({ alg: 'HS256' })
-            .setExpirationTime(JWT_EXPIRES_IN)
+            .setExpirationTime(getJwtExpiresIn())
             .sign(JWT_SECRET);
     },
 };
