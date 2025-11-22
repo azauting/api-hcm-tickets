@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 import userRoutes from './src/modules/user/user.route';
 import authRoutes from './src/modules/auth/auth.route';
 import ticketRoutes from './src/modules/ticket/ticket.route';
+import ticketLogRoutes from './src/modules/ticketLog/ticketLog.route';
 
 dotenv.config();
 const app = express();
@@ -51,7 +52,11 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 // rutas usuarios
 app.use('/api', userRoutes);
-// rutas tickets
+
+// rutas log
+app.use('/api', ticketLogRoutes);
+
+//rutas ticket
 app.use('/api', ticketRoutes);
 
 const startServer = async () => {

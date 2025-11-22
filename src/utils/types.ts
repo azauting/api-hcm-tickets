@@ -1,4 +1,4 @@
-import type { User, Ticket, UserWithRole, TipoEstado, paginationInfo, TicketConDetalle } from './interfaces';
+import type { User, Ticket, UserWithRole, TipoEstado, paginationInfo, TicketFullData } from './interfaces';
 
 // Respuesta genrerica para services con la misma estructura de datos
 export type ApiResponse<T> =
@@ -29,10 +29,7 @@ export type VerifyResult =
     | { status: 'invalid_password' }
     | { status: 'ok'; user: UserWithRole };
 
-export type GetTicketResult =
-    | { status: 'ok'; ticket: TicketConDetalle }
-    | { status: 'not_found', message: string }
-    | { status: 'error'; message: string };
+
 
 export type CreateTicketResult =
     | { status: 'ok'; ticket_id: number }
@@ -48,3 +45,9 @@ export type CancelTicketResult =
     | { status: 'error'; message: string }
     | { status: 'forbidden'; message: string }
     | { status: 'tiempo expirado'; message: string };
+
+
+export type GetTicketResult =
+    | { status: "ok"; data: TicketFullData }
+    | { status: "not_found"; message: string }
+    | { status: "error"; message: string };
