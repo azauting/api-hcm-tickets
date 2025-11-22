@@ -212,7 +212,6 @@ export const ticketService = {
 
         } catch (error) {
             log.error({ error, ticketId }, "Error en deleteTicketCompleto");
-            return { status: 'error', message: 'Error al agregar al eliminar el ticket' };
         }
     },
     // TODO: REVISAR ESTO! - preguntar al hospital

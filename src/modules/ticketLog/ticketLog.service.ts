@@ -3,11 +3,10 @@ import type { ResultSetHeader } from 'mysql2';
 import type { TicketMovimientoCreateDTO } from '../../utils/interfaces';
 import { logger } from '../../utils/logger';
 import type { RowDataPacket } from 'mysql2';
-
-
 const log = logger.child({ ubicacion: 'ticketLogService' });
 
 export const ticketLogService = {
+
     // Crear log de movimiento
     createTicketLog: async (objetoMovimiento: TicketMovimientoCreateDTO) => {
         log.info({ action: 'createTicketLog', objetoMovimiento }, 'Insertando nuevo ticket_movimiento');
@@ -30,64 +29,84 @@ export const ticketLogService = {
         }
     },
 
-    // Obtener movimientos de un ticket
-    getTicketMovements: async (ticketId: number) => {
+    // Obtener todos los movimientos
+    getAllMovements: async () => {
         try {
             const [rows] = await pool.query<RowDataPacket[]>(
-                `SELECT 
-                    tm.ticket_movimiento_id,
-                    tm.ticket_id,
-                    tm.tipo_movimiento_id,
-                    tm.usuario_id,
-                    u.nombre_completo,
-                    tm.fecha
-                FROM ticket_movimiento tm
-                JOIN usuario u ON u.usuario_id = tm.usuario_id
-                WHERE tm.ticket_id = ?
-                ORDER BY tm.fecha ASC`,
-                [ticketId]
+                `
+            SELECT 
+                tm.ticket_movimiento_id,
+                tm.ticket_id,
+                tm.tipo_movimiento_id,
+                tm.fecha,
+                u.nombre_completo,
+                te.movimiento AS tipo_movimiento
+            FROM ticket_movimiento tm
+            JOIN usuario u ON u.usuario_id = tm.usuario_id
+            JOIN tipo_movimiento te ON te.tipo_movimiento_id = tm.tipo_movimiento_id
+            ORDER BY tm.fecha DESC;
+            `
             );
 
-            if (!rows.length) {
-                return { status: "empty" };
-            }
-
-            return { status: "ok", data: rows };
-
+            return { status: 'ok', data: rows };
         } catch (error) {
-            log.error({ error, ticketId }, "Error al obtener movimientos del ticket");
-            return { status: "error", message: "Error al obtener movimientos del ticket" };
+            log.error({ error }, 'Error en getAllMovements');
+            return { status: 'error', message: 'Error al obtener movimientos' };
         }
     },
 
-    // Último movimiento
-    getLatestTicketMovement: async (ticketId: number) => {
+    // Obtener el movimiento más reciente (global)
+    getLatestGlobalMovement: async () => {
         try {
             const [rows] = await pool.query<RowDataPacket[]>(
-                `SELECT 
-                    tm.ticket_movimiento_id,
-                    tm.ticket_id,
-                    tm.tipo_movimiento_id,
-                    tm.usuario_id,
-                    u.nombre_completo,
-                    tm.fecha
-                FROM ticket_movimiento tm
-                JOIN usuario u ON u.usuario_id = tm.usuario_id
-                WHERE tm.ticket_id = ?
-                ORDER BY tm.fecha DESC
-                LIMIT 1`,
-                [ticketId]
+                `
+            SELECT 
+                tm.ticket_movimiento_id,
+                tm.ticket_id,
+                tm.tipo_movimiento_id,
+                tm.fecha,
+                u.nombre_completo,
+                te.movimiento AS tipo_movimiento
+            FROM ticket_movimiento tm
+            JOIN usuario u ON u.usuario_id = tm.usuario_id
+            JOIN tipo_movimiento te ON te.tipo_movimiento_id = tm.tipo_movimiento_id
+            ORDER BY tm.fecha DESC
+            LIMIT 1;
+            `
             );
 
-            if (!rows.length) {
-                return { status: "empty" };
-            }
-
-            return { status: "ok", data: rows[0] };
-
+            return { status: 'ok', data: rows[0] };
         } catch (error) {
-            log.error({ error, ticketId }, "Error en obtener el movimiento más reciente");
-            return { status: "error", message: "Error al obtener movimiento más reciente" };
+            log.error({ error }, 'Error en obtener el ultimo movimiento');
+            return { status: 'error', message: 'Error al obtener último movimiento' };
         }
-    }
+    },
+    
+    // Obtener movimientos por usuario
+    getMovementsByUser: async (usuarioId: number) => {
+        try {
+            const [rows] = await pool.query<RowDataPacket[]>(
+                `
+            SELECT 
+                tm.ticket_movimiento_id,
+                tm.ticket_id,
+                tm.tipo_movimiento_id,
+                tm.fecha,
+                te.movimiento AS tipo_movimiento
+            FROM ticket_movimiento tm
+            JOIN tipo_movimiento te ON te.tipo_movimiento_id = tm.tipo_movimiento_id
+            WHERE tm.usuario_id = ?
+            ORDER BY tm.fecha DESC;
+            `,
+                [usuarioId]
+            );
+
+            return { status: 'ok', data: rows };
+        } catch (error) {
+            log.error({ error }, 'Error al obtener movimiento del usuario');
+            return { status: 'error', message: 'Error al obtener movimientos del usuario' };
+        }
+    },
+
+
 };

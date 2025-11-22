@@ -12,10 +12,10 @@ const router = express.Router();
 // TODO: crear ticket - estado: ✅
 router.post('/tickets', verifyToken, ticketController.createTicket);
 
-// TODO: crear detalle observacion  - estado: ✅ (falta desarrollar)
+// TODO: crear detalle observacion  - estado: ✅ 
 router.post('/tickets/:id/detalle/observacion', verifyToken, checkRole(['soporte', 'administrador']), ticketController.addTicketObservation);
 
-// TODO: crear detalle integrante - estado : ✅ (falta revisar)
+// TODO: crear detalle integrante - estado : ✅ 
 router.post('/tickets/:id/detalle/integrante', verifyToken, checkRole(['soporte', 'administrador']), ticketController.addTicketMember);
 
 
@@ -59,7 +59,6 @@ router.get('/tickets/revisados', verifyToken, checkRole(['administrador', 'sopor
 router.get('/tickets/all', verifyToken, checkRole(['administrador']), ticketController.getAllTickets);
 
 
-
 //============================================================
 //                     ROUTE DE TIPOS
 // ============================================================ 
@@ -76,6 +75,7 @@ router.get('/tickets/tipo_unidad', verifyToken, ticketController.getUnityType);
 //============================================================
 //              RUTAS DE DETALLES INDIVIDUALES
 // ============================================================ 
+
 
 // TODO: obtener solo el detalle del ticket
 router.get('/tickets/:id/detalle', verifyToken, ticketController.getTicketDetailsById);

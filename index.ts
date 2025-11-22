@@ -52,11 +52,12 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 // rutas usuarios
 app.use('/api', userRoutes);
-// rutas tickets
-app.use('/api', ticketRoutes);
 
-//rutas logs de tickets
-app.use('/api', ticketLogRoutes)
+// rutas log
+app.use('/api', ticketLogRoutes);
+
+//rutas ticket
+app.use('/api', ticketRoutes);
 
 const startServer = async () => {
     try {
