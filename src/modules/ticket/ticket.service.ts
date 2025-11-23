@@ -443,21 +443,14 @@ export const ticketService = {
         log.info({ action: 'assignTicket', ticket_id, soporte_asignado }, 'Asignando soporte al ticket');
 
         try {
-            // Validar que el soporte exista y sea rol soporte
-            const [soporteRows] = await pool.query<RowDataPacket[]>(
-                `SELECT usuario_id 
-                FROM usuario 
-                WHERE usuario_id = ? AND rol_id = 2`,
+            // debemos verificar que el usuario soporte no tenga un ticket asignado, porque para poder asignar un ticket, el soporte no debe tener otro ticket asignado, debemos verificar todos los tickets con su ticket_detalle y ver si el soporte_asignado es igual al usuario que queremos asignar y que el ticket no esté cerrado (tipo_estado_id != 5)
+            const [assignedRows] = await pool.query<RowDataPacket[]>(
+                `SELECT t.ticket_id
+                FROM ticket t
+                JOIN ticket_detalle td ON t.ticket_id = td.ticket_id
+                WHERE td.soporte_asignado = ? AND t.tipo_estado_id != 5`,
                 [soporte_asignado]
             );
-
-            // si no existe el soporte no continuar
-            if (!soporteRows.length) {
-                return {
-                    status: 'error',
-                    message: 'El soporte no existe o no es rol soporte'
-                };
-            }
 
             // 🔍 Obtener el detalle del ticket
             const [rows] = await pool.query<RowDataPacket[]>(

@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { validadorTicketForm } from '../../utils/validatorTicketForm';
 import { ticketService } from './ticket.service';
 import { logger } from '../../utils/logger';
-import type {AuthRequest,TicketCreateDTO,TicketMovimientoCreateDTO} from '../../utils/interfaces';
+import type { AuthRequest, TicketCreateDTO, TicketMovimientoCreateDTO } from '../../utils/interfaces';
 import { ticketLogController } from '../ticketLog/ticketLog.controller';
 
 import { parseIdParam, sendResponse } from '../../utils/helper';
@@ -91,12 +91,12 @@ export const ticketController = {
             }
 
             const userId = req.user!.id;
-            const userRole = req.user!.tipo_rol;  
+            const userRole = req.user!.tipo_rol;
 
             const result = await ticketService.closeTicket(ticketId, userId, userRole);
 
             if (result.status !== 'ok') {
-                return sendResponse(res, 400, result.message ?? "No se pudo cerrar el ticket"); 
+                return sendResponse(res, 400, result.message ?? "No se pudo cerrar el ticket");
             }
 
             return sendResponse(res, 200, "Ticket cerrado correctamente", {
@@ -191,10 +191,6 @@ export const ticketController = {
             return sendResponse(res, 400, "ID de ticket inválido para obtener detalles");
         }
 
-        // datos del usuario autenticado
-        const userId = req.user!.id;
-        const role = req.user!.tipo_rol;
-
         const result = await ticketService.getTicketById(ticketId);
 
         if (result.status === "not_found") {
@@ -205,38 +201,7 @@ export const ticketController = {
             return sendResponse(res, 500, result.message);
         }
 
-        const { ticket } = result.data;
-
-        //condiciones de acceso según rol
-
-        if (role === "administrador") {
-            return sendResponse(res, 200, "Ticket obtenido correctamente", result.data);
-        }
-
-
-        if (role === "soporte") {
-            const assigned = await ticketService.isSupportAssigned(ticketId, userId);
-
-            if (!assigned) {
-                return sendResponse(res, 403, "No estás asignado a este ticket");
-            }
-
-            return sendResponse(res, 200, "Ticket obtenido correctamente", result.data);
-        }
-
-
-        if (role === "solicitante") {
-
-
-            if (ticket.usuario_id_solicita !== userId) {
-                return sendResponse(res, 403, "No tienes permisos suficientes para acceder a este ticket");
-
-            }
-
-            return sendResponse(res, 200, "Ticket obtenido correctamente", result.data);
-        }
-
-        return sendResponse(res, 403, "No autorizado");
+        return sendResponse(res, 200, "Ticket obtenido correctamente", { ticket: result.data });
     },
     // TODO: obtener todos los tickets (solo admin - preguntar al hospital)
     getAllTickets: async (req: AuthRequest, res: Response) => {
