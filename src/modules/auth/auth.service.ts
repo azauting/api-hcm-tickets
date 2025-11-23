@@ -44,8 +44,8 @@ export const AuthService = {
             u.nombre_completo,
             u.correo,
             u.contrasena,
-            r.nombre_rol AS tipo_rol,
-            tu.tipo_unidad AS tipo_unidad
+            r.nombre_rol AS nombre_rol,
+            tu.unidad AS unidad
         FROM usuario u
         INNER JOIN tipo_rol r ON u.rol_id = r.rol_id
         LEFT JOIN tipo_unidad tu ON u.unidad_id = tu.unidad_id
