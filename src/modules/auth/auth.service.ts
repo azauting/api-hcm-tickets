@@ -1,4 +1,3 @@
-// src/services/auth/auth.service.ts  (o donde tengas este archivo)
 import { logger } from '../../utils/logger';
 import pool from '../../config/db.config';
 import bcrypt from 'bcryptjs';

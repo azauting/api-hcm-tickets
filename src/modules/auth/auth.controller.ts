@@ -32,13 +32,25 @@ export const login = async (req: Request, res: Response) => {
         // Excluir contraseña antes de enviar la respuesta
         const { contrasena: _, ...userWithoutPassword } = user;
 
+        // Configuración de la cookie (ajusta maxAge según necesidad)
+        const isProd = process.env.NODE_ENV === 'production';
+        const cookieName = 'token'; 
+        const cookieOptions = {
+            httpOnly: true,
+            secure: isProd, // true en producción (https); false en dev (http://localhost)
+            sameSite: isProd ? 'none' as const : 'lax' as const,
+            path: '/',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 días
+        };
+
+        // Enviar cookie + respuesta (NO enviamos token en el body por seguridad)
+        res.cookie(cookieName, token, cookieOptions);
+
         return sendResponse(res, 200, 'Inicio de sesión exitoso', {
-            user: userWithoutPassword,
-            token,
+            user: userWithoutPassword
         });
     } catch (error) {
-        console.error('Error en login:', error);
-
+        log.error({ error }, 'Error en login');
         return sendResponse(
             res,
             500,

@@ -5,15 +5,20 @@ import cors from 'cors';
 import db from './src/config/db.config';
 import helmet from 'helmet';
 import bcrypt from 'bcryptjs';
+import cookieParser from 'cookie-parser';
+
 import userRoutes from './src/modules/user/user.route';
 import authRoutes from './src/modules/auth/auth.route';
 import ticketRoutes from './src/modules/ticket/ticket.route';
 import ticketLogRoutes from './src/modules/ticketLog/ticketLog.route';
 
+
 const app = express();
 
 // PORT seguro: parsea y da fallback
 const port = Number(process.env.PORT ?? 3000);
+
+
 
 app.use(helmet());
 app.use(
@@ -31,11 +36,13 @@ console.log('ENV CHECK — JWT_SECRET exists?', Boolean(process.env.JWT_SECRET))
 console.log('ENV CHECK — NODE_ENV:', process.env.NODE_ENV);
 
 // CORS: permitir el frontend (ajusta FRONTEND_ORIGIN en tu .env)
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN ?? 'http://localhost:4200';
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN
+app.use(cookieParser());
+
 app.use(
     cors({
         origin: FRONTEND_ORIGIN,
-        credentials: false, 
+        credentials: true, // si usas cookies o auth headers 
     })
 );
 
