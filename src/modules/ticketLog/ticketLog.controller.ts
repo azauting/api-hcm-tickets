@@ -12,7 +12,7 @@ export const ticketLogController = {
     createTicketLog: async (objetoMovimiento: TicketMovimientoCreateDTO) => {
         log.info({ objetoMovimiento }, 'Obteniendo data para crear ticket movimiento log');
 
-        if (!objetoMovimiento.ticket_id ||!objetoMovimiento.tipo_movimiento_id ||!objetoMovimiento.usuario_id) {
+        if (!objetoMovimiento.ticket_id ||!objetoMovimiento.movimiento_id ||!objetoMovimiento.usuario_id) {
 
             log.error({ objetoMovimiento }, 'Datos incompletos para crear ticket movimiento log');
             return { status: 'error', message: 'Datos incompletos para crear ticket movimiento log' };

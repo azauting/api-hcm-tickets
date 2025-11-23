@@ -16,37 +16,44 @@ export interface User {
 // Tipos básicos
 export interface TipoRol {
     rol_id: number;
-    tipo_rol: 'solicitante' | 'soporte' | 'administrador';
+    nombre_rol: 'solicitante' | 'soporte' | 'administrador';
 }
 
 export interface TipoUnidad {
     unidad_id: number;
-    tipo_unidad: string;
+    unidad: string;
 }
 
 export interface TipoEstado {
-    tipo_estado_id: number;
+    estado_id: number;
     estado: string;
 }
 
 export interface TipoPrioridad {
-    tipo_prioridad_id: number;
+    prioridad_id: number;
     prioridad: string;
 }
 
 export interface TipoOrigen {
-    tipo_origen_id: number;
+    origen_id: number;
     origen: string;
 }
 
 export interface TipoEvento {
-    tipo_evento_id: number;
+    evento_id: number;
     evento: string;
 }
 
 export interface Ubicacion {
     ubicacion_id: number;
     ubicacion: string;
+    area_id: number;
+}
+
+// area
+export interface Area {
+    area_id: number;
+    nombre_area: string;
 }
 
 // Ticket principal
@@ -59,11 +66,11 @@ export interface Ticket {
     autor_problema: string;
     direccion_ip?: string;
     estado_de_revision: boolean;
-    tipo_prioridad_id: number;
-    tipo_unidad_id: number;
-    tipo_estado_id: number;
-    tipo_origen_id: number;
-    tipo_evento_id?: number | null;
+    prioridad_id: number;
+    unidad_id: number;
+    estado_id: number;
+    origen_id: number;
+    evento_id?: number | null;
     ubicacion_id: number;
 }
 
@@ -108,7 +115,7 @@ export interface TipoMovimiento {
 export interface TicketMovimiento {
     ticket_movimiento_id: number;
     ticket_id: number;
-    tipo_movimiento_id: number;
+    movimiento_id: number;
     usuario_id: number;
     fecha: Date; // 
 }
@@ -121,22 +128,22 @@ export interface TicketMovimiento {
 export interface JWTPayload {
     id: number;
     correo: string;
-    tipo_rol: string;
-    tipo_unidad?: string | null;
+    nombre_rol: string;
+    unidad?: string | null;
 }
 
 export interface JWTPayload extends JoseJWTPayload {
     id: number;
     correo: string;
-    tipo_rol: string;
-    tipo_unidad?: string | null;
+    nombre_rol: string;
+    unidad?: string | null;
 }
 // extensiones para las interfaces
 
 // Usuario con rol incluido
 export interface UserWithRole extends User {
-    tipo_rol: string;
-    tipo_unidad?: string | null;
+    nombre_rol: string;
+    unidad?: string | null;
 }
 
 // AuthRequest extiende Request para incluir información del usuario autenticado
@@ -144,8 +151,8 @@ export interface AuthRequest extends Request {
     user?: {
         id: number;
         correo: string;
-        tipo_rol: string;
-        tipo_unidad?: string | null;
+        nombre_rol: string;
+        unidad?: string | null;
     };
 }
 
@@ -159,11 +166,11 @@ export interface TicketCreateDTO {
     ubicacion_id?: number | null;
     direccion_ip: string; // guardar IPv4/IPv6
     estado_de_revision: number;
-    tipo_prioridad_id: number;
-    tipo_unidad_id: number;
-    tipo_estado_id: number;
-    tipo_origen_id: number;
-    tipo_evento_id: number;
+    prioridad_id: number;
+    unidad_id: number;
+    estado_id: number;
+    origen_id: number;
+    evento_id: number;
 }
 
 export interface ticketDetalleAsignar {
@@ -174,7 +181,7 @@ export interface ticketDetalleAsignar {
 // MOLDE PARA CREAR UN MOVIMIENTO
 export interface TicketMovimientoCreateDTO {
     ticket_id: number;
-    tipo_movimiento_id: number;
+    movimiento_id: number;
     usuario_id: number;
 }
 

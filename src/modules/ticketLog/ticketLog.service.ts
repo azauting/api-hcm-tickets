@@ -12,11 +12,11 @@ export const ticketLogService = {
         log.info({ action: 'createTicketLog', objetoMovimiento }, 'Insertando nuevo ticket_movimiento');
         try {
             const [result] = await pool.query<ResultSetHeader>(
-                `INSERT INTO ticket_movimiento (ticket_id, tipo_movimiento_id, usuario_id, fecha)
+                `INSERT INTO ticket_movimiento (ticket_id, movimiento_id, usuario_id, fecha)
                 VALUES (?, ?, ?, NOW())`,
                 [
                     objetoMovimiento.ticket_id,
-                    objetoMovimiento.tipo_movimiento_id,
+                    objetoMovimiento.movimiento_id,
                     objetoMovimiento.usuario_id
                 ]
             );
@@ -37,13 +37,13 @@ export const ticketLogService = {
             SELECT 
                 tm.ticket_movimiento_id,
                 tm.ticket_id,
-                tm.tipo_movimiento_id,
+                tm.movimiento_id,
                 tm.fecha,
                 u.nombre_completo,
                 te.movimiento AS tipo_movimiento
             FROM ticket_movimiento tm
             JOIN usuario u ON u.usuario_id = tm.usuario_id
-            JOIN tipo_movimiento te ON te.tipo_movimiento_id = tm.tipo_movimiento_id
+            JOIN tipo_movimiento te ON te.movimiento_id = tm.movimiento_id
             ORDER BY tm.fecha DESC;
             `
             );
@@ -63,13 +63,13 @@ export const ticketLogService = {
             SELECT 
                 tm.ticket_movimiento_id,
                 tm.ticket_id,
-                tm.tipo_movimiento_id,
+                tm.movimiento_id,
                 tm.fecha,
                 u.nombre_completo,
                 te.movimiento AS tipo_movimiento
             FROM ticket_movimiento tm
             JOIN usuario u ON u.usuario_id = tm.usuario_id
-            JOIN tipo_movimiento te ON te.tipo_movimiento_id = tm.tipo_movimiento_id
+            JOIN tipo_movimiento te ON te.movimiento_id = tm.movimiento_id
             ORDER BY tm.fecha DESC
             LIMIT 1;
             `
@@ -90,11 +90,11 @@ export const ticketLogService = {
             SELECT 
                 tm.ticket_movimiento_id,
                 tm.ticket_id,
-                tm.tipo_movimiento_id,
+                tm.movimiento_id,
                 tm.fecha,
                 te.movimiento AS tipo_movimiento
             FROM ticket_movimiento tm
-            JOIN tipo_movimiento te ON te.tipo_movimiento_id = tm.tipo_movimiento_id
+            JOIN tipo_movimiento te ON te.movimiento_id = tm.movimiento_id
             WHERE tm.usuario_id = ?
             ORDER BY tm.fecha DESC;
             `,

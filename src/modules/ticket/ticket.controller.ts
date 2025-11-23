@@ -35,11 +35,11 @@ export const ticketController = {
             ubicacion_id: ticketValidado.ubicacion_id,
             direccion_ip: req.ip!,
             estado_de_revision: 0,
-            tipo_prioridad_id: 1,
-            tipo_unidad_id: 1,
-            tipo_estado_id: 1,
-            tipo_origen_id: 1,
-            tipo_evento_id: 1,
+            prioridad_id: 1,
+            unidad_id: 1,
+            estado_id: 1,
+            origen_id: 1,
+            evento_id: 1,
         };
 
         // 4. crear ticket
@@ -62,7 +62,7 @@ export const ticketController = {
         // 6. registrar movimiento inicial
         const objetoMovimiento: TicketMovimientoCreateDTO = {
             ticket_id: ticket_id,
-            tipo_movimiento_id: 1, // creación
+            movimiento_id: 1, // creación
             usuario_id: usuario_id_solicita,
         };
 
@@ -91,7 +91,7 @@ export const ticketController = {
             }
 
             const userId = req.user!.id;
-            const userRole = req.user!.tipo_rol;
+            const userRole = req.user!.nombre_rol;
 
             const result = await ticketService.closeTicket(ticketId, userId, userRole);
 
@@ -134,7 +134,7 @@ export const ticketController = {
         // luego de actualizar el ticket, registramos el movimiento en la auditoria
         const objetoMovimiento: TicketMovimientoCreateDTO = {
             ticket_id: ticketId,
-            tipo_movimiento_id: 9, // ticket revisado y actualizado por admin // estos codigos de movimiento pueden cambiar en el futuro
+            movimiento_id: 9, // ticket revisado y actualizado por admin // estos codigos de movimiento pueden cambiar en el futuro
             usuario_id: usuario_id,
         };
         const logResult = await ticketLogController.createTicketLog(objetoMovimiento);
@@ -145,7 +145,7 @@ export const ticketController = {
     assignTicket: async (req: AuthRequest, res: Response) => {
         const ticketId = parseIdParam(req.params.id);
         const usuario_id = req.user!.id;
-        const rol = req.user!.tipo_rol;
+        const rol = req.user!.nombre_rol;
 
         if (ticketId === null) {
             return sendResponse(res, 400, "ID de ticket inválido para asignación");
@@ -175,7 +175,7 @@ export const ticketController = {
 
         await ticketLogController.createTicketLog({
             ticket_id: ticketId,
-            tipo_movimiento_id: 3,
+            movimiento_id: 3,
             usuario_id
         });
 
@@ -205,7 +205,7 @@ export const ticketController = {
     },
     // TODO: obtener todos los tickets (solo admin - preguntar al hospital)
     getAllTickets: async (req: AuthRequest, res: Response) => {
-        const role = req.user!.tipo_rol;
+        const role = req.user!.nombre_rol;
 
         // Solo admin puede ver todos los tickets
         if (role !== 'administrador') {
@@ -246,7 +246,7 @@ export const ticketController = {
         // REGISTRAR EL MOVIMIENTO CORRECTO "COMENTARIO_AGREGADO"(ID = 7)
         await ticketLogController.createTicketLog({
             ticket_id: ticketId,
-            tipo_movimiento_id: 7,
+            movimiento_id: 7,
             usuario_id: userId
         });
 
@@ -281,7 +281,7 @@ export const ticketController = {
         }
         await ticketLogController.createTicketLog({
             ticket_id: ticketId,
-            tipo_movimiento_id: 11,
+            movimiento_id: 11,
             usuario_id: userId
         });
 
@@ -347,7 +347,7 @@ export const ticketController = {
         // 🔥 REGISTRO DEL MOVIMIENTO "INTEGRANTE_AGREGADO" (ID = 15)
         const objetoMovimiento: TicketMovimientoCreateDTO = {
             ticket_id: ticketId,
-            tipo_movimiento_id: 15,
+            movimiento_id: 15,
             usuario_id: usuario_id_solicitante,
         };
 
@@ -359,7 +359,7 @@ export const ticketController = {
     updateTicketSupport: async (req: AuthRequest, res: Response) => {
         const ticketId = parseIdParam(req.params.id);
         const usuario_id = req.user!.id;
-        const role = req.user!.tipo_rol;
+        const nombre_rol = req.user!.nombre_rol;
         const body = req.body;
 
         if (ticketId === null) {
@@ -368,7 +368,7 @@ export const ticketController = {
 
 
         // validar que el soporte esté asignado
-        if (role === "soporte") {
+        if (nombre_rol === "soporte") {
             const assigned = await ticketService.isSupportAssigned(ticketId, usuario_id);
             if (!assigned) {
                 return sendResponse(res, 403, "No puedes modificar un ticket que no tienes asignado");
@@ -389,7 +389,7 @@ export const ticketController = {
         // Registrar movimiento 
         await ticketLogController.createTicketLog({
             ticket_id: ticketId,
-            tipo_movimiento_id: 4, // respondido por soporte 
+            movimiento_id: 4, // respondido por soporte 
             usuario_id,
         });
 
@@ -414,19 +414,19 @@ export const ticketController = {
     getTicketsByUnit: async (req: AuthRequest, res: Response) => {
         // primero obtenemos la info del token
         const usuario_id = req.user!.id;
-        const tipo_unidad = req.user!.tipo_unidad
+        const unidad = req.user!.unidad
 
-        if (!tipo_unidad) {
+        if (!unidad) {
             return sendResponse(res, 400, 'El usuario no tiene una unidad asignada');
         }
-        log.info({ usuario_id, tipo_unidad }, 'Obteniendo tickets por unidad');
+        log.info({ usuario_id, unidad }, 'Obteniendo tickets por unidad');
 
         // independiente el rol, si el administrador es unidad soporte, obtiene todos los tickets de la unidad soporte
         try {
 
-            if (tipo_unidad === 'soporte') {
-                const tipo_unidad_id = 1
-                const result = await ticketService.getTicketsByUnit(tipo_unidad_id);
+            if (unidad === 'soporte') {
+                const unidad_id = 1
+                const result = await ticketService.getTicketsByUnit(unidad_id);
 
                 if (result.status === 'empty') {
                     return sendResponse(res, 404, 'No se encontraron tickets para la unidad soporte');
@@ -436,9 +436,9 @@ export const ticketController = {
                 }
                 return sendResponse(res, 200, 'Tickets de la unidad soporte obtenidos correctamente', { tickets: result.data });
             }
-            if (tipo_unidad === 'infraestructura') {
-                const tipo_unidad_id = 2
-                const result = await ticketService.getTicketsByUnit(tipo_unidad_id);
+            if (unidad === 'infraestructura') {
+                const unidad_id = 2
+                const result = await ticketService.getTicketsByUnit(unidad_id);
                 if (result.status === 'empty') {
                     return sendResponse(res, 404, 'No se encontraron tickets para la unidad infraestructura');
                 }
@@ -447,9 +447,9 @@ export const ticketController = {
                 }
                 return sendResponse(res, 200, 'Tickets de la unidad infraestructura obtenidos correctamente', { tickets: result.data });
             }
-            if (tipo_unidad === 'desarrollo') {
-                const tipo_unidad_id = 3
-                const result = await ticketService.getTicketsByUnit(tipo_unidad_id);
+            if (unidad === 'desarrollo') {
+                const unidad_id = 3
+                const result = await ticketService.getTicketsByUnit(unidad_id);
                 if (result.status === 'empty') {
                     return sendResponse(res, 404, 'No se encontraron tickets para la unidad desarrollo');
                 }

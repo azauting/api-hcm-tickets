@@ -10,7 +10,7 @@ export const checkRole = (allowedRoles: string[]) => {
     }
 
     //  Verificar permisos por rol
-    if (!allowedRoles.includes(req.user.tipo_rol)) {
+    if (!allowedRoles.includes(req.user.nombre_rol)) {
       return sendResponse(res, 403, 'Acceso prohibido: rol insuficiente');
     }
     // Permisos verificados, continuar

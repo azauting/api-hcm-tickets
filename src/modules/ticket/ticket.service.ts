@@ -17,7 +17,7 @@ export const ticketService = {
         try {
             const [result] = await pool.query<ResultSetHeader>(
                 `INSERT INTO ticket 
-                    (usuario_id_solicita, asunto, descripcion, telefono, autor_problema, ubicacion_id, direccion_ip, estado_de_revision, tipo_prioridad_id, tipo_unidad_id, tipo_estado_id, tipo_origen_id, tipo_evento_id) 
+                    (usuario_id_solicita, asunto, descripcion, telefono, autor_problema, ubicacion_id, direccion_ip, estado_de_revision, prioridad_id, unidad_id, estado_id, origen_id, evento_id) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     ticketObjeto.usuario_id_solicita,
@@ -28,11 +28,11 @@ export const ticketService = {
                     ticketObjeto.ubicacion_id,
                     ticketObjeto.direccion_ip,
                     ticketObjeto.estado_de_revision,
-                    ticketObjeto.tipo_prioridad_id,
-                    ticketObjeto.tipo_unidad_id,
-                    ticketObjeto.tipo_estado_id,
-                    ticketObjeto.tipo_origen_id,
-                    ticketObjeto.tipo_evento_id,
+                    ticketObjeto.prioridad_id,
+                    ticketObjeto.unidad_id,
+                    ticketObjeto.estado_id,
+                    ticketObjeto.origen_id,
+                    ticketObjeto.evento_id,
                 ]
             );
 
@@ -105,7 +105,7 @@ export const ticketService = {
             // 4) Actualizar el estado del ticket
             const [updateRes] = await pool.query<ResultSetHeader>(
                 `UPDATE ticket
-                SET tipo_estado_id = 5   -- aquí va el ID REAL de estado CERRADO
+                SET estado_id = 5   -- aquí va el ID REAL de estado CERRADO
                 WHERE ticket_id = ?`,
                 [ticketId]
             );
@@ -118,7 +118,7 @@ export const ticketService = {
             await ticketLogService.createTicketLog({
                 ticket_id: ticketId,
                 usuario_id: userId,
-                tipo_movimiento_id: 5
+                movimiento_id: 5
             });
 
             log.info({ ticketId }, 'Ticket cerrado correctamente');
@@ -351,17 +351,17 @@ export const ticketService = {
 
             // filtros
             if (filters.estado) {
-                whereConditions.push("tipo_estado_id = ?");
+                whereConditions.push("estado_id = ?");
                 values.push(filters.estado);
             }
 
             if (filters.prioridad) {
-                whereConditions.push("tipo_prioridad_id = ?");
+                whereConditions.push("prioridad_id = ?");
                 values.push(filters.prioridad);
             }
 
             if (filters.evento) {
-                whereConditions.push("tipo_evento_id = ?");
+                whereConditions.push("evento_id = ?");
                 values.push(filters.evento);
             }
 
@@ -381,9 +381,9 @@ export const ticketService = {
                     telefono,
                     autor_problema,
                     ubicacion_id,
-                    tipo_estado_id,
-                    tipo_prioridad_id,
-                    tipo_evento_id
+                    estado_id,
+                    prioridad_id,
+                    evento_id
                 FROM ticket
                 ${whereSql}
                 ORDER BY ticket_id DESC
@@ -443,12 +443,12 @@ export const ticketService = {
         log.info({ action: 'assignTicket', ticket_id, soporte_asignado }, 'Asignando soporte al ticket');
 
         try {
-            // debemos verificar que el usuario soporte no tenga un ticket asignado, porque para poder asignar un ticket, el soporte no debe tener otro ticket asignado, debemos verificar todos los tickets con su ticket_detalle y ver si el soporte_asignado es igual al usuario que queremos asignar y que el ticket no esté cerrado (tipo_estado_id != 5)
+            // debemos verificar que el usuario soporte no tenga un ticket asignado, porque para poder asignar un ticket, el soporte no debe tener otro ticket asignado, debemos verificar todos los tickets con su ticket_detalle y ver si el soporte_asignado es igual al usuario que queremos asignar y que el ticket no esté cerrado (estado_id != 5)
             const [assignedRows] = await pool.query<RowDataPacket[]>(
                 `SELECT t.ticket_id
                 FROM ticket t
                 JOIN ticket_detalle td ON t.ticket_id = td.ticket_id
-                WHERE td.soporte_asignado = ? AND t.tipo_estado_id != 5`,
+                WHERE td.soporte_asignado = ? AND t.estado_id != 5`,
                 [soporte_asignado]
             );
 
@@ -535,7 +535,7 @@ export const ticketService = {
                 return { status: 'error', message: 'Datos inválidos' };
             }
 
-            const allowedTicketFields = ["tipo_estado_id", "tipo_prioridad_id"];
+            const allowedTicketFields = ["estado_id", "prioridad_id"];
             const allowedDetalleFields = ["respuesta"];
 
             const ticketUpdates: any = {};
@@ -634,26 +634,26 @@ export const ticketService = {
     },
 
     // TODO: service para obtener los tickets por unidad - estado: ✅
-    getTicketsByUnit: async (tipo_unidad_id: number): Promise<ApiResponse<Ticket>> => {
-        log.info({ action: 'getTicketsByUnitId', tipo_unidad_id }, 'Obteniendo tickets por unidad');
+    getTicketsByUnit: async (unidad_id: number): Promise<ApiResponse<Ticket>> => {
+        log.info({ action: 'getTicketsByUnitId', unidad_id }, 'Obteniendo tickets por unidad');
         try {
             // obtener todos los ticket de esa unidad y que tengan estado_revision = 1 (revisados)
             const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
-                `SELECT * FROM ticket WHERE tipo_unidad_id = ? AND estado_de_revision = 1 ORDER BY ticket_id DESC`,
-                [tipo_unidad_id]
+                `SELECT * FROM ticket WHERE unidad_id = ? AND estado_de_revision = 1 ORDER BY ticket_id DESC`,
+                [unidad_id]
             );
             const tickets = rows as Ticket[];
 
             if (!tickets.length) {
-                log.warn({ tipo_unidad_id }, 'No se encontraron tickets para esta unidad');
+                log.warn({ unidad_id }, 'No se encontraron tickets para esta unidad');
                 return { status: 'empty' };
             }
 
-            log.info({ tipo_unidad_id }, 'Tickets obtenidos correctamente');
+            log.info({ unidad_id }, 'Tickets obtenidos correctamente');
             return { status: 'ok', data: tickets };
 
         } catch (error) {
-            log.error({ error, tipo_unidad_id }, 'Error al obtener tickets por unidad');
+            log.error({ error, unidad_id }, 'Error al obtener tickets por unidad');
             return { status: 'error', message: 'Error al obtener tickets por unidad' };
         }
     },
@@ -664,7 +664,7 @@ export const ticketService = {
 
         try {
             const [rows] = await pool.query(
-                `SELECT tipo_estado_id, estado FROM tipo_estado`
+                `SELECT estado_id, estado FROM tipo_estado`
             );
 
             const estados = rows as TipoEstado[];
@@ -687,9 +687,9 @@ export const ticketService = {
 
         try {
             const [rows] = await pool.query(`
-            SELECT tipo_prioridad_id, prioridad FROM tipo_prioridad; `);
+            SELECT prioridad_id, prioridad FROM tipo_prioridad; `);
 
-            const prioridades = rows as { tipo_prioridad_id: number; prioridad: string }[];
+            const prioridades = rows as { prioridad_id: number; prioridad: string }[];
 
             if (!prioridades.length) {
                 log.warn('No se encontraron prioridades registradas');
@@ -708,10 +708,10 @@ export const ticketService = {
 
         try {
             const [rows] = await pool.query(
-                `SELECT tipo_origen_id, origen FROM tipo_origen`
+                `SELECT origen_id, origen FROM tipo_origen`
             );
 
-            const origen = rows as { tipo_origen_id: number; origen: string }[];
+            const origen = rows as { origen_id: number; origen: string }[];
 
             if (!origen.length) {
                 log.warn('No se encontraron tipos de origen');
@@ -731,17 +731,17 @@ export const ticketService = {
 
         try {
             const [rows] = await pool.query(
-                'SELECT tipo_evento_id,evento FROM tipo_evento'
+                'SELECT evento_id,evento FROM tipo_evento'
             )
 
-            const eventos = rows as { tipo_evento_id: number; evento: string }[];
+            const eventos = rows as { evento_id: number; evento: string }[];
 
             if (!eventos.length) {
                 log.warn('no se encontraron tipos de eventos')
                 return { status: 'empty' }
             }
 
-            log.info('tipo de evento obtenido correctamente')
+            log.info('evento obtenido correctamente')
             return { status: 'ok', data: eventos }
 
         } catch (error) {
@@ -782,9 +782,9 @@ export const ticketService = {
         log.info({ action: 'GetAllUnidad' }, 'obteniendo todos los tipos de unidad')
 
         try {
-            const [rows] = await pool.query('SELECT unidad_id,tipo_unidad FROM tipo_unidad')
+            const [rows] = await pool.query('SELECT unidad_id, unidad FROM tipo_unidad')
 
-            const unidades = rows as { unidad_id: number, tipo_unidad: string; }[];
+            const unidades = rows as { unidad_id: number, unidad: string; }[];
 
             if (!unidades.length) {
                 log.warn('no se encontraron las unidades')

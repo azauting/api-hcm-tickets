@@ -88,8 +88,8 @@ export const AuthService = {
                 return new SignJWT({
                     id: user.usuario_id,
                     correo: user.correo,
-                    tipo_rol: user.tipo_rol,
-                    tipo_unidad: user.tipo_unidad ?? null,
+                    tipo_rol: user.nombre_rol,
+                    tipo_unidad: user.unidad ?? null,
                 })
                     .setProtectedHeader({ alg: 'HS256' })
                     .setExpirationTime(getJwtExpiresIn())
@@ -100,8 +100,8 @@ export const AuthService = {
         const payload: JWTPayload = {
             id: user.usuario_id,
             correo: user.correo,
-            tipo_rol: user.tipo_rol,
-            tipo_unidad: user.tipo_unidad ?? null,
+            nombre_rol: user.nombre_rol,
+            unidad: user.unidad ?? null,
         };
 
         return new SignJWT(payload)

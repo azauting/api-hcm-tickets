@@ -68,8 +68,8 @@ export const verifyToken = async (req: AuthRequest, res: Response, next: NextFun
         req.user = {
             id: payload.id,
             correo: payload.correo,
-            tipo_rol: payload.tipo_rol,
-            tipo_unidad: payload.tipo_unidad,
+            nombre_rol: payload.nombre_rol,
+            unidad: payload.unidad,
         };
 
         log.info({ correo: req.user.correo }, 'Token verificado correctamente');
