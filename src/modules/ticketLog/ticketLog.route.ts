@@ -9,7 +9,7 @@ const router = express.Router();
 router.get('/tickets/movimientos', verifyToken,checkRole(['administrador']),ticketLogController.getAllMovements);
 
 // TODO: Obtener el movimiento más reciente global
-router.get('/tickets/movimientos/recientes', verifyToken,checkRole(['administrador']),ticketLogController.getLatestGlobalMovement);
+router.get('/tickets/movimientos/recientes', verifyToken,checkRole(['administrador', 'soporte']),ticketLogController.getLatestGlobalMovement);
 
 // TODO : Obtener movimientos por usuario
 router.get('/tickets/movimientos/usuario/:id', verifyToken,checkRole(['administrador']), ticketLogController.getMovementsByUser);
