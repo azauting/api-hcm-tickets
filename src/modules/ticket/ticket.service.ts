@@ -419,9 +419,26 @@ export const ticketService = {
                 return { status: 'error', message: 'Datos inválidos' };
             }
 
+            
+            if (updateData.tipo_estado_id !== undefined) {
+                updateData.estado_id = updateData.tipo_estado_id;
+                delete updateData.tipo_estado_id;
+            }
+
+            if (updateData.tipo_prioridad_id !== undefined) {
+                updateData.prioridad_id = updateData.tipo_prioridad_id;
+                delete updateData.tipo_prioridad_id;
+            }
+
+            if (updateData.tipo_evento_id !== undefined) {
+                updateData.evento_id = updateData.tipo_evento_id;
+                delete updateData.tipo_evento_id;
+            }
+
             // Siempre marcar como revisado
             updateData.estado_de_revision = 1;
 
+            // UPDATE simple como antes
             const [result] = await pool.query<ResultSetHeader>(
                 'UPDATE ticket SET ? WHERE ticket_id = ?',
                 [updateData, ticketId]
