@@ -72,7 +72,7 @@ export const ticketLogService = {
             JOIN usuario u ON u.usuario_id = tm.usuario_id
             JOIN tipo_movimiento te ON te.movimiento_id = tm.movimiento_id
             ORDER BY tm.fecha DESC
-            LIMIT 1;
+            LIMIT 10;
             `
             );
 
