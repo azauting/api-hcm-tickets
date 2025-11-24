@@ -313,9 +313,11 @@ export const ticketService = {
             let observaciones: TicketDetalleObservacion[] = [];
             if (detalle) {
                 const [obsRows] = await pool.query<RowDataPacket[]>(
-                    // el usuario_id debemos obtener su id y su nombre en string
-
-                    `SELECT * FROM ticket_detalle_observacion WHERE ticket_detalle_id = ?`,
+                    // debemos agregar el nombre del usuario que hizo la observacion
+                    `SELECT tdo.ticket_detalle_observacion_id, tdo.ticket_detalle_id, tdo.observacion, tdo.usuario_id, u.nombre_completo AS usuario_nombre
+                    FROM ticket_detalle_observacion tdo
+                    JOIN usuario u ON tdo.usuario_id = u.usuario_id
+                    WHERE tdo.ticket_detalle_id = ?`,
                     [detalle.ticket_detalle_id]
                 );
                 observaciones = obsRows as TicketDetalleObservacion[];
@@ -324,8 +326,12 @@ export const ticketService = {
             // Obtener integrantes
             let integrantes: any[] = [];
             if (detalle) {
+                // ademas debe aparecer el nombre del integrante
                 const [intRows] = await pool.query<RowDataPacket[]>(
-                    `SELECT * FROM ticket_detalle_integrante WHERE ticket_detalle_id = ?`,
+                    `SELECT tdi.ticket_detalle_integrante_id, tdi.ticket_detalle_id, tdi.usuario_id, u.nombre_completo AS usuario_nombre
+                    FROM ticket_detalle_integrante tdi
+                    JOIN usuario u ON tdi.usuario_id = u.usuario_id
+                    WHERE tdi.ticket_detalle_id = ?`,
                     [detalle.ticket_detalle_id]
                 );
                 integrantes = intRows;
