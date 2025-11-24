@@ -10,7 +10,6 @@ import { ticketLogService } from '../ticketLog/ticketLog.service';
 
 
 export const ticketService = {
-    // TODO: Crear ticket - estado: ✅
     createTicket: async (ticketObjeto: TicketCreateDTO): Promise<CreateTicketResult> => {
         log.info({ action: 'createTicketService', usuario_id_solicita: ticketObjeto.usuario_id_solicita }, 'Recibiendo datos del controller nuevo ticket');
         // primera parte, crea el ticket
@@ -49,7 +48,6 @@ export const ticketService = {
             };
         }
     },
-    // TODO: Crear ticket detalle - estado: ✅
     createTicketDetail: async (ticketId: number): Promise<ApiResponse<TicketDetalle>> => {
         try {
             const [result] = await pool.query<ResultSetHeader>(
@@ -72,7 +70,6 @@ export const ticketService = {
             return { status: 'error', message: 'Error al crear ticket_detalle' };
         }
     },
-    // TODO: cerrar ticket - nuevo (estado: pendiente)
     closeTicket: async (ticketId: number, userId: number, userRole: string) => {
         log.info({ action: 'closeTicket', ticketId, userId, userRole }, 'Intentando cerrar ticket');
 
@@ -99,7 +96,8 @@ export const ticketService = {
             if (userRole === 'soporte') {
                 const isAssigned = await ticketService.isSupportAssigned(ticketId, userId);
                 if (!isAssigned) {
-                    return {status: 'error',message: 'No puedes cerrar un ticket que no está asignado a ti'};}
+                    return { status: 'error', message: 'No puedes cerrar un ticket que no está asignado a ti' };
+                }
             }
 
             // 4) Actualizar el estado del ticket
@@ -130,9 +128,6 @@ export const ticketService = {
             return { status: 'error', message: 'Error al cerrar el ticket' };
         }
     },
-
-
-    // TODO: crear detalle observacion - pendiente a revisar
     addTicketObservation: async (ticketId: number, observacion: string, userId: number): Promise<ApiResponse<TicketDetalleObservacion>> => {
 
         try {
@@ -175,7 +170,6 @@ export const ticketService = {
 
         }
     },
-    // TODO: borrar ticket completo - preguntar al hospital
     deleteFullTicket: async (ticketId: number): Promise<void> => {
         try {
             // 1. obtener ticket_detalle_id asociados
@@ -214,7 +208,6 @@ export const ticketService = {
             log.error({ error, ticketId }, "Error en deleteTicketCompleto");
         }
     },
-    // TODO: REVISAR ESTO! - preguntar al hospital
     cancelTicket: async (ticketId: number, userId: number): Promise<CancelTicketResult> => {
         try {
             // 1. OBTENER TICKET
@@ -279,8 +272,6 @@ export const ticketService = {
             return { status: "error", message: "Error al cancelar el ticket" };
         }
     },
-
-    // TODO: ver un ticket por ID - estado: ✅
     getTicketById: async (ticketId: number): Promise<GetTicketResult> => {
         log.info({ action: 'getTicketById', ticketId }, 'Obteniendo ticket por ID');
 
@@ -290,11 +281,43 @@ export const ticketService = {
 
         try {
             // Obtener ticket + su fecha de creación
+            // join a las tablas tipo_estado, tipo_prioridad, tipo_origen, tipo_evento, ubicacion, tipo_unidad para mostrar los nombres en vez de los IDs
             const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
-                `SELECT t.*,
-                (SELECT fecha FROM ticket_movimiento tm WHERE tm.ticket_id = t.ticket_id ORDER BY fecha ASC LIMIT 1) AS fecha_creacion
+                `SELECT 
+                    t.ticket_id,
+                    t.usuario_id_solicita,
+                    t.asunto,
+                    t.descripcion,
+                    t.telefono,
+                    t.autor_problema,
+                    t.direccion_ip,
+                    t.estado_de_revision,
+                    
+                    -- valores de las tablas tipo (sin las *_id)
+                    te.estado    AS estado,
+                    tp.prioridad AS prioridad,
+                    tu.unidad    AS unidad,
+                    tor.origen   AS origen,
+                    tev.evento   AS evento,
+                    u.ubicacion  AS ubicacion,
+
+                    (
+                        SELECT fecha 
+                        FROM ticket_movimiento tm 
+                        WHERE tm.ticket_id = t.ticket_id 
+                        ORDER BY fecha ASC 
+                        LIMIT 1
+                    ) AS fecha_creacion
+
                 FROM ticket t
-                WHERE t.ticket_id = ?`,
+                JOIN tipo_estado    te ON t.estado_id    = te.estado_id
+                JOIN tipo_prioridad tp ON t.prioridad_id = tp.prioridad_id
+                JOIN tipo_unidad    tu ON t.unidad_id    = tu.unidad_id
+                JOIN tipo_origen    tor ON t.origen_id   = tor.origen_id
+                JOIN tipo_evento    tev ON t.evento_id   = tev.evento_id
+                JOIN ubicacion      u  ON t.ubicacion_id = u.ubicacion_id
+                WHERE t.ticket_id = ?;
+                `,
                 [ticketId]
             );
 
@@ -341,7 +364,6 @@ export const ticketService = {
             return { status: "error", message: "Error al obtener el ticket" };
         }
     },
-    // TODO: ver mis tickets creados - estado: ✅
     getTicketsByUserId: async (userId: number, params: { page: number; limit: number; offset: number; filters: any }): Promise<GetTicketsType> => {
 
         const { page, limit, offset, filters } = params;
@@ -376,16 +398,49 @@ export const ticketService = {
             const whereSql = `WHERE ${whereConditions.join(" AND ")}`;
 
             // debemos agregar la fecha de creación del ticket desde ticket_movimiento
+            // debemos hacer joins con las tablas tipo_estado, tipo_prioridad, tipo_origen, tipo_evento, ubicacion, tipo_unidad para mostrar los nombres en vez de los IDs
             const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
-                `SELECT t.id, t.usuario_id_solicita, t.asunto, t.descripcion, t.telefono, t.autor_problema, t.ubicacion_id, t.direccion_ip, t.estado_de_revision, t.prioridad_id, t.unidad_id, t.estado_id, t.origen_id, t.evento_id,
-                (SELECT fecha FROM ticket_movimiento tm WHERE tm.ticket_id = t.ticket_id ORDER BY fecha ASC LIMIT 1) AS fecha_creacion
+                `SELECT 
+                    t.ticket_id,
+                    t.usuario_id_solicita,
+                    t.asunto,
+                    t.descripcion,
+                    t.telefono,
+                    t.autor_problema,
+                    t.direccion_ip,
+                    t.estado_de_revision,
+
+                    -- nombres de tablas tipo (sin IDs)
+                    te.estado    AS estado,
+                    tp.prioridad AS prioridad,
+                    tu.unidad    AS unidad,
+                    tor.origen   AS origen,
+                    tev.evento   AS evento,
+                    u.ubicacion  AS ubicacion,
+
+                    (
+                        SELECT fecha 
+                        FROM ticket_movimiento tm 
+                        WHERE tm.ticket_id = t.ticket_id 
+                        ORDER BY fecha ASC 
+                        LIMIT 1
+                    ) AS fecha_creacion
+
                 FROM ticket t
+                JOIN tipo_estado    te ON t.estado_id    = te.estado_id
+                JOIN tipo_prioridad tp ON t.prioridad_id = tp.prioridad_id
+                JOIN tipo_origen    tor ON t.origen_id   = tor.origen_id
+                JOIN tipo_evento    tev ON t.evento_id   = tev.evento_id
+                JOIN ubicacion      u  ON t.ubicacion_id = u.ubicacion_id
+                JOIN tipo_unidad    tu ON t.unidad_id    = tu.unidad_id
+
                 ${whereSql}
+
                 ORDER BY t.ticket_id DESC
-                LIMIT ? OFFSET ?`,
+                LIMIT ? OFFSET ?;
+                `,
                 [...values, limit, offset]
             );
-
             const tickets = rows as Ticket[];
 
             if (!tickets.length) {
@@ -405,7 +460,6 @@ export const ticketService = {
             return { status: 'error', message: 'error al obtener los tickets' };
         }
     },
-    // TODO: actualizar ticket por admin - estado: ✅
     updateTicketByAdmin: async (ticketId: number, updateData: any) => {
         try {
             // Validación básica
@@ -413,7 +467,7 @@ export const ticketService = {
                 return { status: 'error', message: 'Datos inválidos' };
             }
 
-            
+
             if (updateData.tipo_estado_id !== undefined) {
                 updateData.estado_id = updateData.tipo_estado_id;
                 delete updateData.tipo_estado_id;
@@ -449,7 +503,6 @@ export const ticketService = {
             return { status: 'error', message: 'No se pudo actualizar el ticket' };
         }
     },
-
     assignTicket: async (ticket_id: number, soporte_asignado: number) => {
         log.info({ action: 'assignTicket', ticket_id, soporte_asignado }, 'Asignando soporte al ticket');
 
@@ -497,7 +550,6 @@ export const ticketService = {
             return { status: 'error', message: 'Error interno al asignar soporte' };
         }
     },
-    // TODO: crear detalle integrante - estado: ✅ 
     addMemberToTicket: async (ticket_id: number, usuario_id: number, usuario_id_solicitante: number) => {
         log.info({ action: 'addTicketMember', ticket_id, usuario_id, usuario_id_solicitante }, 'Agregando integrante al ticket');
         try {
@@ -538,76 +590,6 @@ export const ticketService = {
             return { status: 'error', message: 'Error al agregar el integrante' };
         }
     },
-    // TODO: actualizar ticket por soporte/administrador - estado: ✅ 
-    updateTicketBySupport: async (ticketId: number, updateData: any) => {
-        try {
-            // Validar body
-            if (!updateData || typeof updateData !== 'object') {
-                return { status: 'error', message: 'Datos inválidos' };
-            }
-
-            const allowedTicketFields = ["estado_id", "prioridad_id"];
-            const allowedDetalleFields = ["respuesta"];
-
-            const ticketUpdates: any = {};
-            const detalleUpdates: any = {};
-
-            // Filtrar campos válidos
-            for (const key of Object.keys(updateData)) {
-                if (allowedTicketFields.includes(key)) {
-                    ticketUpdates[key] = updateData[key];
-                }
-                if (allowedDetalleFields.includes(key)) {
-                    detalleUpdates[key] = updateData[key];
-                }
-            }
-
-            // Si no se está actualizando nada permitido
-            if (Object.keys(ticketUpdates).length === 0 && Object.keys(detalleUpdates).length === 0) {
-                return { status: 'error', message: 'No hay campos válidos para actualizar' };
-            }
-
-            // 1️⃣ Actualizar tabla ticket (si corresponde)
-            if (Object.keys(ticketUpdates).length > 0) {
-                const [result] = await pool.query<ResultSetHeader>(
-                    `UPDATE ticket SET ? WHERE ticket_id = ?`,
-                    [ticketUpdates, ticketId]
-                );
-
-                if (result.affectedRows === 0) {
-                    return { status: 'not_found', message: 'Ticket no encontrado' };
-                }
-            }
-
-            // 2️⃣ Actualizar respuesta en ticket_detalle
-            if (Object.keys(detalleUpdates).length > 0) {
-                const [detalleRows] = await pool.query<RowDataPacket[]>(
-                    `SELECT ticket_detalle_id FROM ticket_detalle WHERE ticket_id = ?`,
-                    [ticketId]
-                );
-
-                const detalle = detalleRows[0];
-                if (!detalle) {
-                    return { status: 'error', message: 'El ticket no tiene un detalle asociado' };
-                }
-
-                await pool.query(
-                    `UPDATE ticket_detalle SET ? WHERE ticket_detalle_id = ?`,
-                    [detalleUpdates, detalle.ticket_detalle_id]
-                );
-            }
-
-            return {
-                status: 'ok',
-                cambios: updateData
-            };
-
-        } catch (error) {
-            log.error({ error, ticketId, updateData }, 'Error en updateTicketSupport');
-            return { status: 'error', message: 'No se pudo actualizar el ticket' };
-        }
-    },
-    // TODO : validar que el soporte esté asignado al ticket - estado: ✅
     isSupportAssigned: async (ticketId: number, soporteId: number): Promise<boolean> => {
         try {
             const [rows] = await pool.query<RowDataPacket[]>(
@@ -623,14 +605,39 @@ export const ticketService = {
             return false;
         }
     },
-    // TODO MOSTRAR TODOS LOS TICKETS CON estado_revision = 0 (significa sin revisar)
     getUnreviewedTickets: async (): Promise<ApiResponse<Ticket>> => {
         log.info({ action: 'getUnreviewedTickets' }, 'Obteniendo tickets sin revisar');
         try {
+            // aca debemos mostrar la informacion del ticket donde estado_de_revision = 0, ademas con todos sus valores tipo con el valor de texto, por lo tanto hay que hacer joins con las tablas tipo_estado, tipo_prioridad, tipo_origen, tipo_evento, ubicacion, tipo_unidad
             const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
-                `SELECT * FROM ticket WHERE estado_de_revision = 0
-                ORDER BY ticket_id DESC`
+                `SELECT 
+                    t.ticket_id,
+                    t.usuario_id_solicita,
+                    t.asunto,
+                    t.descripcion,
+                    t.telefono,
+                    t.autor_problema,
+                    t.direccion_ip,
+                    t.estado_de_revision,
+
+                    te.estado    AS estado,
+                    tp.prioridad AS prioridad,
+                    tor.origen   AS origen,
+                    tev.evento   AS evento,
+                    u.ubicacion  AS ubicacion,
+                    tu.unidad    AS unidad
+
+                FROM ticket t
+                JOIN tipo_estado    te ON t.estado_id    = te.estado_id
+                JOIN tipo_prioridad tp ON t.prioridad_id = tp.prioridad_id
+                JOIN tipo_origen    tor ON t.origen_id   = tor.origen_id
+                JOIN tipo_evento    tev ON t.evento_id   = tev.evento_id
+                JOIN ubicacion      u  ON t.ubicacion_id = u.ubicacion_id
+                JOIN tipo_unidad    tu ON t.unidad_id    = tu.unidad_id
+                WHERE t.estado_de_revision = 0
+                ORDER BY t.ticket_id DESC`
             );
+
             const tickets = rows as Ticket[];
             if (!tickets.length) {
                 log.warn('No se encontraron tickets sin revisar');
@@ -643,14 +650,41 @@ export const ticketService = {
             return { status: 'error', message: 'Error al obtener tickets sin revisar' };
         }
     },
-
-    // TODO: service para obtener los tickets por unidad - estado: ✅
     getTicketsByUnit: async (unidad_id: number): Promise<ApiResponse<Ticket>> => {
         log.info({ action: 'getTicketsByUnitId', unidad_id }, 'Obteniendo tickets por unidad');
         try {
             // obtener todos los ticket de esa unidad y que tengan estado_revision = 1 (revisados)
+            // ademas debemos hacer joins con las tablas tipo_estado, tipo_prioridad, tipo_origen, tipo_evento, ubicacion, tipo_unidad para mostrar los nombres en vez de los IDs
             const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
-                `SELECT * FROM ticket WHERE unidad_id = ? AND estado_de_revision = 1 ORDER BY ticket_id DESC`,
+                `SELECT 
+                    t.ticket_id,
+                    t.usuario_id_solicita,
+                    t.asunto,
+                    t.descripcion,
+                    t.telefono,
+                    t.autor_problema,
+                    t.direccion_ip,
+                    t.estado_de_revision,
+
+                    te.estado    AS estado,
+                    tp.prioridad AS prioridad,
+                    tor.origen   AS origen,
+                    tev.evento   AS evento,
+                    u.ubicacion  AS ubicacion,
+                    tu.unidad    AS unidad
+
+                FROM ticket t
+                JOIN tipo_estado    te ON t.estado_id    = te.estado_id
+                JOIN tipo_prioridad tp ON t.prioridad_id = tp.prioridad_id
+                JOIN tipo_origen    tor ON t.origen_id   = tor.origen_id
+                JOIN tipo_evento    tev ON t.evento_id   = tev.evento_id
+                JOIN ubicacion      u  ON t.ubicacion_id = u.ubicacion_id
+                JOIN tipo_unidad    tu ON t.unidad_id    = tu.unidad_id
+                
+                WHERE t.unidad_id = ? 
+                AND t.estado_de_revision = 1
+
+                ORDER BY t.ticket_id DESC`,
                 [unidad_id]
             );
             const tickets = rows as Ticket[];
@@ -668,8 +702,6 @@ export const ticketService = {
             return { status: 'error', message: 'Error al obtener tickets por unidad' };
         }
     },
-
-    // TODO :SERVICES PARA LOS ESTADOS, PRIORIDADES, ORIGEN, EVENTO, UNIDAD, UBICACION - estado: ✅
     getAllStatusTypes: async (): Promise<ApiResponse<TipoEstado>> => {
         log.info({ action: 'getAllTipoEstado' }, 'Obteniendo todos los tipos de estado');
 
@@ -810,17 +842,39 @@ export const ticketService = {
         }
 
     },
-    // TODO: obtener todos los tickets (solo admin - preguntar al hospital)
     getAllTickets: async (): Promise<ApiResponse<Ticket>> => {
         log.info({ action: "getAllTickets" }, "Obteniendo todos los tickets");
-
+        // obtener todos los tickets ordenados por ticket_id DESC
+        // join con las tablas tipo_estado, tipo_prioridad, tipo_origen, tipo_evento, ubicacion, tipo_unidad para mostrar los nombres en vez de los IDs
         try {
             const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
-                `SELECT * 
-                FROM ticket 
-                ORDER BY ticket_id DESC`
-            );
+                `SELECT 
+                t.ticket_id,
+                t.usuario_id_solicita,
+                t.asunto,
+                t.descripcion,
+                t.telefono,
+                t.autor_problema,
+                t.direccion_ip,
+                t.estado_de_revision,
 
+                te.estado    AS estado,
+                tp.prioridad AS prioridad,
+                tor.origen   AS origen,
+                tev.evento   AS evento,
+                u.ubicacion  AS ubicacion,
+                tu.unidad    AS unidad
+
+            FROM ticket t
+            JOIN tipo_estado    te ON t.estado_id    = te.estado_id
+            JOIN tipo_prioridad tp ON t.prioridad_id = tp.prioridad_id
+            JOIN tipo_origen    tor ON t.origen_id   = tor.origen_id
+            JOIN tipo_evento    tev ON t.evento_id   = tev.evento_id
+            JOIN ubicacion      u  ON t.ubicacion_id = u.ubicacion_id
+            JOIN tipo_unidad    tu ON t.unidad_id    = tu.unidad_id
+
+            ORDER BY t.ticket_id DESC`
+            );
             const tickets = rows as Ticket[];
 
             if (!tickets.length) {
@@ -839,6 +893,7 @@ export const ticketService = {
     },
     getTicketDetailsById: async (ticketId: number) => {
         try {
+            // 
             const [rows] = await pool.query<RowDataPacket[]>(
                 `SELECT 
                 ticket_detalle_id,

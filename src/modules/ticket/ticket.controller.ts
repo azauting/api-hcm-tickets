@@ -10,8 +10,6 @@ import { parseIdParam, sendResponse } from '../../utils/helper';
 const log = logger.child({ ubicacion: 'ticketController' });
 
 export const ticketController = {
-
-    // TODO: Controladores completos
     createTicket: async (req: AuthRequest, res: Response) => {
         // 1. obtener el usuario_id desde el token
         const usuario_id_solicita = req.user!.id
@@ -203,7 +201,6 @@ export const ticketController = {
 
         return sendResponse(res, 200, "Ticket obtenido correctamente", { ticket: result.data });
     },
-    // TODO: obtener todos los tickets (solo admin - preguntar al hospital)
     getAllTickets: async (req: AuthRequest, res: Response) => {
         const role = req.user!.nombre_rol;
 
@@ -319,7 +316,6 @@ export const ticketController = {
 
         return sendResponse(res, 200, 'Tickets obtenidos correctamente', { tickets: result.tickets });
     },
-    // TODO: controlador para agregar integrante al ticket - estado: ✅
     addTicketMember: async (req: AuthRequest, res: Response) => {
         const ticketId = parseIdParam(req.params.id);
         const usuario_id_solicitante = req.user!.id;
@@ -354,49 +350,7 @@ export const ticketController = {
 
         return sendResponse(res, 200, 'Integrante agregado correctamente', { ticket_detalle_integrante_id: result.ticket_detalle_integrante_id });
     },
-    // TODO: controlador para que el soporte o admin actualice el ticket - estado: ✅
-    updateTicketSupport: async (req: AuthRequest, res: Response) => {
-        const ticketId = parseIdParam(req.params.id);
-        const usuario_id = req.user!.id;
-        const nombre_rol = req.user!.nombre_rol;
-        const body = req.body;
-
-        if (ticketId === null) {
-            return sendResponse(res, 400, "ID de ticket inválido para actualización por soporte");
-        }
-
-
-        // validar que el soporte esté asignado
-        if (nombre_rol === "soporte") {
-            const assigned = await ticketService.isSupportAssigned(ticketId, usuario_id);
-            if (!assigned) {
-                return sendResponse(res, 403, "No puedes modificar un ticket que no tienes asignado");
-            }
-        }
-
-        // Llamar al servicio
-        const result = await ticketService.updateTicketBySupport(ticketId, body);
-
-        if (result.status === 'not_found') {
-            return sendResponse(res, 404, result.message ?? 'Ticket no encontrado');
-        }
-
-        if (result.status === 'error') {
-            return sendResponse(res, 500, result.message ?? 'Error al actualizar el ticket');
-        }
-
-        // Registrar movimiento 
-        await ticketLogController.createTicketLog({
-            ticket_id: ticketId,
-            movimiento_id: 4, // respondido por soporte 
-            usuario_id,
-        });
-
-        return sendResponse(res, 200, 'Ticket actualizado correctamente', {
-            cambios: result.cambios
-        });
-    },
-    // TODO: controlador para obtener los tickets sin revisar - estado: ✅
+    
     getUnreviewedTickets: async (req: AuthRequest, res: Response) => {
         log.info('Obteniendo tickets sin revisar');
         const result = await ticketService.getUnreviewedTickets();
@@ -408,8 +362,6 @@ export const ticketController = {
         }
         return sendResponse(res, 200, 'Tickets sin revisar obtenidos correctamente', { tickets: result.data });
     },
-    // TODO: controlador para obtener los tickets por unidad - estado: (falta revisar)
-    // ! FALTA REVISAR 
     getTicketsByUnit: async (req: AuthRequest, res: Response) => {
         // primero obtenemos la info del token
         const usuario_id = req.user!.id;
@@ -462,7 +414,6 @@ export const ticketController = {
             return sendResponse(res, 500, 'Error al obtener tickets por unidad');
         }
     },
-    // TODO: controlador para obtener los tipos - estado: ✅
     getStatusType: async (req: Request, res: Response) => {
         const result = await ticketService.getAllStatusTypes();
 

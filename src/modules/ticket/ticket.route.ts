@@ -30,9 +30,6 @@ router.patch('/tickets/:id/review', verifyToken, checkRole(['administrador']),
 // TODO: asignar ticket por el admin o soporte - estado: ✅
 router.patch('/tickets/:id/assign', verifyToken, checkRole(['soporte', 'administrador']), ticketController.assignTicket);
 
-// TODO: cambios del ticket por parte del soporte/administrador - estado: ✅ 
-router.patch('/tickets/:id/update', verifyToken, checkRole(['soporte', 'administrador']), ticketController.updateTicketSupport);
-
 // TODO: ruta para cancelar ticket antes de los 5 minutos
 router.patch('/tickets/:id/cancel', verifyToken, ticketController.cancelTicket);
 
