@@ -51,3 +51,7 @@ export type GetTicketResult =
     | { status: "ok"; data: TicketFullData }
     | { status: "not_found"; message: string }
     | { status: "error"; message: string };
+
+export type GetAllSupportsResult =
+    | { status: 'ok'; supports: User[] }
+    | { status: 'empty' };
