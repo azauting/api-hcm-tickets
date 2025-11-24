@@ -63,24 +63,37 @@ export const userService = {
         log.info({ action: 'getAvailableSupports' }, 'Obteniendo soportes disponibles para asignar tickets');
 
         try {
-            // Mostrar todos los usuarios con el rol soporte que no tengan un ticket asignado en estado 'en proceso' (estado_id = 2)
+            // Mostrar todos los usuarios con el rol soporte que no tengan un ticket asignado en estado 'en proceso' (estado_id = 2) pero debemos mostrar TODOS los soportes disponibles
+            // para ver si esta asignado a un ticket, es revisar el ticket detalle y ver si tiene un ticket en estado 'en proceso', para eso hay que ver la tabla ticket y filtrar por estado_id = 2
+            // tabla 
+
             const [rows] = await pool.query<User[] & RowDataPacket[]>(
                 `
-            SELECT u.usuario_id, u.nombre_completo, u.correo, u.rol_id, u.unidad_id
-            FROM usuario u
-            WHERE u.rol_id = (
-                SELECT rol_id FROM rol WHERE nombre_rol = 'soporte' LIMIT 1
-            )
-            AND u.usuario_id NOT IN (
-                SELECT t.soporte_asignado
-                FROM ticket t
-                WHERE t.estado_id = (
-                    SELECT estado_id FROM tipo_estado WHERE estado = 'en proceso' LIMIT 1
+                SELECT 
+                    u.usuario_id, 
+                    u.nombre_completo, 
+                    u.correo, 
+                    u.rol_id, 
+                    u.unidad_id
+                FROM usuario u
+                WHERE u.rol_id = (
+                    SELECT rol_id 
+                    FROM tipo_rol 
+                    WHERE nombre_rol = 'soporte'
                 )
-                AND t.soporte_asignado IS NOT NULL
-            )
-            `
+                AND u.usuario_id NOT IN (
+                    SELECT td.soporte_asignado
+                    FROM ticket_detalle td
+                    JOIN ticket t ON td.ticket_id = t.ticket_id
+                    WHERE t.estado_id = (
+                        SELECT estado_id 
+                        FROM tipo_estado 
+                        WHERE estado = 'en proceso'
+                    )
+                )
+                `
             );
+
 
             if (rows.length === 0) {
                 log.warn('No se encontraron soportes disponibles');
