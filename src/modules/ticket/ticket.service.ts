@@ -625,6 +625,7 @@ export const ticketService = {
         try {
             // obtener todos los ticket de esa unidad y que tengan estado_revision = 1 (revisados)
             // ademas debemos hacer joins con las tablas tipo_estado, tipo_prioridad, tipo_origen, tipo_evento, ubicacion, tipo_unidad para mostrar los nombres en vez de los IDs
+            // ademas hay que agregarle la fecha de creación desde ticket_movimiento
             const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
                 `SELECT 
                     t.ticket_id,
@@ -641,9 +642,11 @@ export const ticketService = {
                     tor.origen   AS origen,
                     tev.evento   AS evento,
                     u.ubicacion  AS ubicacion,
-                    tu.unidad    AS unidad
+                    tu.unidad    AS unidad,
+                    tm.fecha_creacion AS fecha_creacion
 
                 FROM ticket t
+                JOIN ticket_movimiento tm ON t.ticket_id = tm.ticket_id
                 JOIN tipo_estado    te ON t.estado_id    = te.estado_id
                 JOIN tipo_prioridad tp ON t.prioridad_id = tp.prioridad_id
                 JOIN tipo_origen    tor ON t.origen_id   = tor.origen_id

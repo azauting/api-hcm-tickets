@@ -36,7 +36,7 @@ router.patch('/tickets/:id/assign', verifyToken, checkRole(['soporte', 'administ
 // TODO: ruta para cancelar ticket antes de los 5 minutos
 router.patch('/tickets/:id/cancel', verifyToken, ticketController.cancelTicket);
 
-// TODO : cerrrar ticket solo admin/soporte - estado: ✅
+// TODO : cerrrar ticket solo admin/soporte - aqui debemos agregar la respuesta final y cambiar estado del ticket a 5
 router.patch('/tickets/:id/close', verifyToken, checkRole(['soporte', 'administrador']), ticketController.closeTicket);
 
 

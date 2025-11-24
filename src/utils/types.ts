@@ -1,4 +1,4 @@
-import type { User, Ticket, UserWithRole, TipoEstado, paginationInfo, TicketFullData } from './interfaces';
+import type { User, Ticket, UserWithRole, TipoEstado, paginationInfo, TicketFullData, TicketFinalAnswer} from './interfaces';
 
 // Respuesta genrerica para services con la misma estructura de datos
 export type ApiResponse<T> =
