@@ -76,13 +76,20 @@ export const ticketLogService = {
             `
             );
 
-            return { status: 'ok', data: rows[0] };
+            return {
+                status: 'ok',
+                data: rows  // 👈 DEVUELVE TODO EL ARRAY, NO SOLO rows[0]
+            };
         } catch (error) {
-            log.error({ error }, 'Error en obtener el ultimo movimiento');
-            return { status: 'error', message: 'Error al obtener último movimiento' };
+            log.error({ error }, 'Error en obtener los últimos movimientos');
+            return {
+                status: 'error',
+                message: 'Error al obtener los últimos movimientos'
+            };
         }
     },
-    
+
+
     // Obtener movimientos por usuario
     getMovementsByUser: async (usuarioId: number) => {
         try {
