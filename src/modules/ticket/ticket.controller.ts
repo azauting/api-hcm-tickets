@@ -148,9 +148,9 @@ export const ticketController = {
             return sendResponse(res, 400, "ID de ticket inválido para actualización");
         }
         // verificamos que datos se van a actualizar porque debemos saber que campos para la auditoria
-        const allowedFields = ['estado_id','prioridad_id', 'unidad_id'];
+        const allowedFields = ['estado_id', 'prioridad_id', 'unidad_id'];
         const fieldsToUpdate: Partial<typeof updateData> = {};
-        
+
         for (const field of allowedFields) {
             if (field in updateData) {
                 fieldsToUpdate[field] = updateData[field];
@@ -160,7 +160,7 @@ export const ticketController = {
             return sendResponse(res, 400, "No se proporcionaron campos válidos para actualizar");
         }
         const result = await ticketService.updateTicketByAdmin(ticketId, fieldsToUpdate, usuario_id);
-        
+
         if (result.status === 'not_found') {
             return sendResponse(res, 404, "Ticket no encontrado para actualización");
         }
@@ -231,7 +231,7 @@ export const ticketController = {
             movimiento_id: 3,
             usuario_id
         });
-        log.info({ticketId}, 'Movimiento registrado de Ticket Asignacion')
+        log.info({ ticketId }, 'Movimiento registrado de Ticket Asignacion')
 
         return sendResponse(res, 200, 'Ticket asignado correctamente', {
             ticket_detalle_id: result.ticket_detalle_id,
@@ -256,7 +256,7 @@ export const ticketController = {
         }
 
         const ticket = result.data.ticket;
-        
+
         const role = req.user!.nombre_rol;
         const userId = req.user!.id;
 
@@ -285,6 +285,7 @@ export const ticketController = {
         const ticketId = parseIdParam(req.params.id);
         const userId = req.user!.id;
         const { observacion } = req.body;
+
         log.info({ ticketId, userId, observacion }, 'Solicitud para agregar observación al ticket');
 
         if (ticketId === null) {
@@ -295,6 +296,18 @@ export const ticketController = {
             return sendResponse(res, 400, 'La observación es requerida');
         }
 
+        // 🔥 VALIDAR QUE EL USUARIO SEA EL SOPORTE ASIGNADO
+        const esAsignado = await ticketService.isSupportAssigned(ticketId, userId);
+
+        if (!esAsignado) {
+            return sendResponse(
+                res,
+                403,
+                "Solo el soporte asignado puede agregar observaciones a este ticket"
+            );
+        }
+
+        // AGREGAR OBSERVACIÓN
         const result = await ticketService.addTicketObservation(ticketId, observacion, userId);
 
         if (result.status === 'empty') {
@@ -304,17 +317,24 @@ export const ticketController = {
         if (result.status === 'error') {
             return sendResponse(res, 500, result.message);
         }
+
         log.info({ ticketId, userId }, 'Observación agregada correctamente al ticket');
-        // REGISTRAR EL MOVIMIENTO CORRECTO "COMENTARIO_AGREGADO"(ID = 7)
+
+        // REGISTRAR MOVIMIENTO: COMENTARIO_AGREGADO (ID = 7)
         await ticketLogController.createTicketLog({
             ticket_id: ticketId,
             movimiento_id: 7,
             usuario_id: userId
         });
-        log.info({ ticketId, userId }, 'Movimiento de ticket registrado: observación agregada');
-        return sendResponse(res, 200, 'Observación agregada correctamente', result.data[0]
+
+        return sendResponse(
+            res,
+            200,
+            'Observación agregada correctamente',
+            result.data[0]
         );
     },
+
     cancelTicket: async (req: AuthRequest, res: Response) => {
         const ticketId = parseIdParam(req.params.id);
         const userId = req.user!.id;
@@ -384,15 +404,28 @@ export const ticketController = {
     },
     addTicketMember: async (req: AuthRequest, res: Response) => {
         const ticketId = parseIdParam(req.params.id);
-        const usuario_id_solicitante = req.user!.id;
-        const usuario_id = req.body.usuario_id;
+        const usuario_id_solicitante = req.user!.id;      // usuario logueado
+        const rawUsuarioId = req.body.usuario_id;
 
         if (ticketId === null) {
             return sendResponse(res, 400, "ID de ticket inválido para agregar integrante");
         }
 
-        if (!usuario_id || typeof usuario_id !== 'number' || usuario_id <= 0) {
+        // Asegurarnos de que usuario_id sea un número válido
+        const usuario_id = Number(rawUsuarioId);
+        if (!Number.isInteger(usuario_id) || usuario_id <= 0) {
             return sendResponse(res, 400, 'ID de usuario inválido');
+        }
+
+        // 🔥 VALIDAR QUE EL USUARIO LOGUEADO SEA EL SOPORTE ASIGNADO AL TICKET
+        const esAsignado = await ticketService.isSupportAssigned(ticketId, usuario_id_solicitante);
+
+        if (!esAsignado) {
+            return sendResponse(
+                res,
+                403,
+                "Solo el soporte asignado al ticket puede agregar integrantes"
+            );
         }
 
         const result = await ticketService.addMemberToTicket(ticketId, usuario_id, usuario_id_solicitante);
@@ -414,9 +447,13 @@ export const ticketController = {
 
         await ticketLogController.createTicketLog(objetoMovimiento);
 
-        return sendResponse(res, 200, 'Integrante agregado correctamente', { ticket_detalle_integrante_id: result.ticket_detalle_integrante_id });
+        return sendResponse(
+            res,
+            200,
+            'Integrante agregado correctamente',
+            { ticket_detalle_integrante_id: result.ticket_detalle_integrante_id }
+        );
     },
-    
     getUnreviewedTickets: async (req: AuthRequest, res: Response) => {
         log.info('Obteniendo tickets sin revisar');
         const result = await ticketService.getUnreviewedTickets();
