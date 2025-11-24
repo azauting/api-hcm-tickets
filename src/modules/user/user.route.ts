@@ -14,7 +14,7 @@ router.get('/users/:id', getUserById); // listo
 router.patch('/users/:id', updateUserPassword) // pendiente
 
 // ruta para ver los soportes que no tienen un ticket asignado
-router.get('/tickets/soportes', verifyToken, checkRole(['administrador']), getAvailableSupports);
+router.get('/user/soportes-disponibles', verifyToken, checkRole(['administrador']), getAvailableSupports);
 
 // router.get("/users",verifyToken, checkRole(["administrador", ), getUsers);
 
