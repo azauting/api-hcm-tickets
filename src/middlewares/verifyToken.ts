@@ -67,6 +67,7 @@ export const verifyToken = async (req: AuthRequest, res: Response, next: NextFun
         // 4) Adjuntar usuario al request (según payload)
         req.user = {
             id: payload.id,
+            nombre_completo: payload.nombre_completo,
             correo: payload.correo,
             nombre_rol: payload.nombre_rol,
             unidad: payload.unidad,

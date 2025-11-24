@@ -152,6 +152,7 @@ export interface UserWithRole extends User {
 export interface AuthRequest extends Request {
     user?: {
         id: number;
+        nombre_completo: string;
         correo: string;
         nombre_rol: string;
         unidad?: string | null;
