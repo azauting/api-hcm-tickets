@@ -333,6 +333,7 @@ export const ticketService = {
             );
 
             const detalle: TicketDetalle | null = detalleRows.length > 0 ? detalleRows[0] as TicketDetalle : null;
+            
 
             // obtener observaciones
             let observaciones: TicketDetalleObservacion[] = [];
@@ -460,47 +461,31 @@ export const ticketService = {
             return { status: 'error', message: 'error al obtener los tickets' };
         }
     },
-    updateTicketByAdmin: async (ticketId: number, updateData: any) => {
+    reviewTicket: async (ticketId: number, usuario_id: number) => {
         try {
-            // Validación básica
-            if (!updateData || typeof updateData !== 'object') {
-                return { status: 'error', message: 'Datos inválidos' };
-            }
-
-
-            if (updateData.tipo_estado_id !== undefined) {
-                updateData.estado_id = updateData.tipo_estado_id;
-                delete updateData.tipo_estado_id;
-            }
-
-            if (updateData.tipo_prioridad_id !== undefined) {
-                updateData.prioridad_id = updateData.tipo_prioridad_id;
-                delete updateData.tipo_prioridad_id;
-            }
-
-            if (updateData.tipo_evento_id !== undefined) {
-                updateData.evento_id = updateData.tipo_evento_id;
-                delete updateData.tipo_evento_id;
-            }
-
-            // Siempre marcar como revisado
-            updateData.estado_de_revision = 1;
-
-            // UPDATE simple como antes
+            // actualizar estado_de_revision
             const [result] = await pool.query<ResultSetHeader>(
-                'UPDATE ticket SET ? WHERE ticket_id = ?',
-                [updateData, ticketId]
+                `UPDATE ticket 
+            SET estado_de_revision = 1
+            WHERE ticket_id = ?`,
+                [ticketId]
             );
 
             if (result.affectedRows === 0) {
-                return { status: 'not_found', message: 'Ticket no encontrado' };
+                return { status: 'not_found' };
             }
+
+            // registrar movimiento 9 = REVISADO
+            await ticketLogService.createTicketLog({
+                ticket_id: ticketId,
+                movimiento_id: 9,
+                usuario_id
+            });
 
             return { status: 'ok' };
 
         } catch (error) {
-            log.error({ error, ticketId, updateData }, 'Error en updateTicketAdmin');
-            return { status: 'error', message: 'No se pudo actualizar el ticket' };
+            return { status: 'error' };
         }
     },
     assignTicket: async (ticket_id: number, soporte_asignado: number) => {
