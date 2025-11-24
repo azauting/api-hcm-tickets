@@ -488,6 +488,29 @@ export const ticketService = {
             return { status: 'error' };
         }
     },
+    updateTicketByAdmin: async (ticketId: number, updateData: any, usuario_id: number) => {
+        log.info({ action: 'updateTicketByAdmin', ticketId, updateData, usuario_id }, 'Actualizando ticket por administrador');
+        try {
+            const fields = [];
+            const values = [];
+            for (const key in updateData) {
+                fields.push(`${key} = ?`);
+                values.push(updateData[key]);
+            }
+            values.push(ticketId);
+            const [result] = await pool.query<ResultSetHeader>(
+                `UPDATE ticket SET ${fields.join(', ')} WHERE ticket_id = ?`,
+                values
+            );
+            if (result.affectedRows === 0) {
+                return { status: 'not_found' };
+            }
+            return { status: 'ok', updatedFields: updateData };
+        } catch (error) {
+            log.error({ error, ticketId, updateData, usuario_id }, 'Error al actualizar ticket por administrador');
+            return { status: 'error', message: 'Error interno al actualizar ticket' };
+        }
+    },
     assignTicket: async (ticket_id: number, soporte_asignado: number) => {
         log.info({ action: 'assignTicket', ticket_id, soporte_asignado }, 'Asignando soporte al ticket');
 

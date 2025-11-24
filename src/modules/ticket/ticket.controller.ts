@@ -129,6 +129,60 @@ export const ticketController = {
 
         return sendResponse(res, 200, "Ticket marcado como revisado");
     },
+    updateTicketByAdmin: async (req: AuthRequest, res: Response) => {
+        const ticketId = parseIdParam(req.params.id);
+        const usuario_id = req.user!.id;
+        const updateData = req.body;
+
+        // validar id
+        if (ticketId === null) {
+            return sendResponse(res, 400, "ID de ticket inválido para actualización");
+        }
+        // verificamos que datos se van a actualizar porque debemos saber que campos para la auditoria
+        const allowedFields = ['estado_id','prioridad_id', 'unidad_id'];
+        const fieldsToUpdate: Partial<typeof updateData> = {};
+        
+        for (const field of allowedFields) {
+            if (field in updateData) {
+                fieldsToUpdate[field] = updateData[field];
+            }
+        }
+        if (Object.keys(fieldsToUpdate).length === 0) {
+            return sendResponse(res, 400, "No se proporcionaron campos válidos para actualizar");
+        }
+        const result = await ticketService.updateTicketByAdmin(ticketId, fieldsToUpdate, usuario_id);
+        
+        if (result.status === 'not_found') {
+            return sendResponse(res, 404, "Ticket no encontrado para actualización");
+        }
+        if (result.status === 'error') {
+            return sendResponse(res, 500, "Error al actualizar el ticket");
+        }
+        // Registrar los cambios en el log del ticket
+        // si cambia el estado el numero es 8
+        // si cambia la priodad el numero es 12
+        // si cambia la unidad el numero es 13
+        // por lo tanto puede haber multiples registros al mismo tiempo, se debe poder registrar mas de uno si que es que hubo cambios en varios campos actualizados
+        for (const field of Object.keys(fieldsToUpdate)) {
+            let movimiento_id: number | null = null;
+            if (field === 'estado_id') {
+                movimiento_id = 8;
+            } else if (field === 'prioridad_id') {
+                movimiento_id = 12;
+            } else if (field === 'unidad_id') {
+                movimiento_id = 13;
+            }
+            if (movimiento_id) {
+                await ticketLogController.createTicketLog({
+                    ticket_id: ticketId,
+                    movimiento_id,
+                    usuario_id
+                });
+            }
+        }
+
+        return sendResponse(res, 200, "Ticket actualizado correctamente", { updatedFields: result.updatedFields });
+    },
 
     assignTicket: async (req: AuthRequest, res: Response) => {
         const ticketId = parseIdParam(req.params.id);

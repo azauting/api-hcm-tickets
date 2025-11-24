@@ -1,6 +1,6 @@
 import { logger } from '../../utils/logger';
 import pool from '../../config/db.config';
-import type { GetUserResult, GetAllUsersResult } from '../../utils/types';
+import type { GetUserResult, GetAllUsersResult, GetAllSupportsResult } from '../../utils/types';
 import type { User } from '../../utils/interfaces';
 import type { RowDataPacket } from 'mysql2';
 
@@ -58,4 +58,41 @@ export const userService = {
             throw error;
         }
     },
+    /* GetAvailableSupports - Obtener soportes disponibles para asignar tickets */
+    async getAvailableSupports(): Promise<GetAllSupportsResult> {
+        log.info({ action: 'getAvailableSupports' }, 'Obteniendo soportes disponibles para asignar tickets');
+
+        try {
+            // Mostrar todos los usuarios con el rol soporte que no tengan un ticket asignado en estado 'en proceso' (estado_id = 2)
+            const [rows] = await pool.query<User[] & RowDataPacket[]>(
+                `
+            SELECT u.usuario_id, u.nombre_completo, u.correo, u.rol_id, u.unidad_id
+            FROM usuario u
+            WHERE u.rol_id = (
+                SELECT rol_id FROM rol WHERE nombre_rol = 'soporte' LIMIT 1
+            )
+            AND u.usuario_id NOT IN (
+                SELECT t.soporte_asignado
+                FROM ticket t
+                WHERE t.estado_id = (
+                    SELECT estado_id FROM tipo_estado WHERE estado = 'en proceso' LIMIT 1
+                )
+                AND t.soporte_asignado IS NOT NULL
+            )
+            `
+            );
+
+            if (rows.length === 0) {
+                log.warn('No se encontraron soportes disponibles');
+                return { status: 'empty' };
+            }
+
+            log.info({ count: rows.length }, 'Soportes disponibles obtenidos correctamente');
+            return { status: 'ok', supports: rows };
+        } catch (error) {
+            log.error({ error }, 'Error al obtener soportes disponibles');
+            throw error;
+        }
+    }
 };
+

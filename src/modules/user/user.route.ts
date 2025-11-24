@@ -1,5 +1,5 @@
 import express from 'express';
-import { getUserById, getUsers, updateUserPassword, updateUserRole } from './user.controller';
+import { getUserById, getUsers, updateUserPassword, getAvailableSupports } from './user.controller';
 import { checkRole } from '../../middlewares/checkRole';
 import { verifyToken } from '../../middlewares/verifyToken';
 
@@ -13,9 +13,8 @@ router.get('/users/:id', getUserById); // listo
 // actualizar el usuario rol/unidad/contrasena
 router.patch('/users/:id', updateUserPassword) // pendiente
 
-
-//ruta para ver soportes disponibles para asignarles tickets
-// router.get('/tickets/soportes') // todo : usuarios disponibles para asignar tickets
+// ruta para ver los soportes que no tienen un ticket asignado
+router.get('/tickets/soportes', verifyToken, checkRole(['administrador']), getAvailableSupports);
 
 // router.get("/users",verifyToken, checkRole(["administrador", ), getUsers);
 

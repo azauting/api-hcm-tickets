@@ -27,7 +27,8 @@ router.post('/tickets/:id/detalle/integrante', verifyToken, checkRole(['soporte'
 router.patch('/tickets/:id/review', verifyToken, checkRole(['administrador']),
     ticketController.updateTicketAdminReview);
 
-
+// ruta para actualizar campos del ticket - para admininitrador
+router.patch('/tickets/:id', verifyToken, checkRole(['administrador']), ticketController.updateTicketByAdmin);
 
 // TODO: asignar ticket por el admin o soporte - estado: ✅
 router.patch('/tickets/:id/assign', verifyToken, checkRole(['soporte', 'administrador']), ticketController.assignTicket);
