@@ -1,4 +1,4 @@
-import type { Ticket, TicketCreateDTO, TicketDetalleObservacion, TipoEstado, TipoEvento, TipoOrigen, TipoPrioridad, TipoUnidad, Ubicacion, TicketDetalle } from '../../utils/interfaces';
+import type { Ticket, TicketCreateDTO, TicketDetalleObservacion, TipoEstado, TipoEvento, TipoOrigen, TipoPrioridad, TipoUnidad, Ubicacion, TicketDetalle, TicketFinalAnswer } from '../../utils/interfaces';
 import type { ResultSetHeader } from 'mysql2';
 import pool from '../../config/db.config';
 import { logger } from '../../utils/logger';
@@ -70,61 +70,20 @@ export const ticketService = {
             return { status: 'error', message: 'Error al crear ticket_detalle' };
         }
     },
-    closeTicket: async (ticketId: number, userId: number, userRole: string) => {
-        log.info({ action: 'closeTicket', ticketId, userId, userRole }, 'Intentando cerrar ticket');
-
+    closeTicket: async (ticketId: number, respuestaFinal: string, usuario_id: number): Promise<ApiResponse<TicketFinalAnswer>> => {
         try {
-            // Verificar si el ticket existe
-            const [ticketRows] = await pool.query<RowDataPacket[]>(
-                `SELECT ticket_id, usuario_id_solicita
-                FROM ticket
-                WHERE ticket_id = ?`,
-                [ticketId]
+            // 1. actualizar el ticket con estado_id = 5 (CERRADO), y agregar la respuesta en ticket detalle
+            const [updateResult] = await pool.query<ResultSetHeader>(
+                `UPDATE ticket t
+                JOIN ticket_detalle td ON t.ticket_id = td.ticket_id
+                SET t.estado_id = 5, td.respuesta = ?
+                WHERE t.ticket_id = ?`,
+                [respuestaFinal, ticketId]
             );
 
-            const ticket = ticketRows[0];
-            if (!ticket) {
-                return { status: 'error', message: 'El ticket no existe' };
-            }
-
-            // Validación de permisos
-            if (userRole !== 'administrador' && userRole !== 'soporte') {
-                return { status: 'error', message: 'No tienes permisos para cerrar este ticket' };
-            }
-
-            // Si es soporte, validar asignación
-            if (userRole === 'soporte') {
-                const isAssigned = await ticketService.isSupportAssigned(ticketId, userId);
-                if (!isAssigned) {
-                    return { status: 'error', message: 'No puedes cerrar un ticket que no está asignado a ti' };
-                }
-            }
-
-            // 4) Actualizar el estado del ticket
-            const [updateRes] = await pool.query<ResultSetHeader>(
-                `UPDATE ticket
-                SET estado_id = 5   -- aquí va el ID REAL de estado CERRADO
-                WHERE ticket_id = ?`,
-                [ticketId]
-            );
-
-            if (updateRes.affectedRows === 0) {
-                return { status: 'error', message: 'No se pudo cerrar el ticket' };
-            }
-
-            // 5) Registrar MOVIMIENTO CERRADO (ID = 5)
-            await ticketLogService.createTicketLog({
-                ticket_id: ticketId,
-                usuario_id: userId,
-                movimiento_id: 5
-            });
-
-            log.info({ ticketId }, 'Ticket cerrado correctamente');
-
-            return { status: 'ok', ticket_id: ticketId };
-
+            return { status: 'ok', data: [{ ticket_id: ticketId, respuesta_final: respuestaFinal }] };
         } catch (error) {
-            log.error({ error, ticketId, userId, userRole }, 'Error al cerrar el ticket');
+            log.error({ error, ticketId, usuario_id }, 'Error al cerrar el ticket');
             return { status: 'error', message: 'Error al cerrar el ticket' };
         }
     },

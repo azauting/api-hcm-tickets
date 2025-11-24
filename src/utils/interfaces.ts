@@ -193,3 +193,8 @@ export interface paginationInfo {
     limit: number;
     count: number;
 }
+
+export interface TicketFinalAnswer {
+    ticket_id: number;
+    respuesta_final: string;
+} 
