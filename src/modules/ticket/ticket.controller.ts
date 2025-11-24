@@ -260,13 +260,6 @@ export const ticketController = {
         const role = req.user!.nombre_rol;
         const userId = req.user!.id;
 
-        // Seguridad por rol
-        const isAssigned = await ticketService.isSupportAssigned(ticketId, userId);
-
-        //ver ticket, admin,solicitante que lo creo, y soporte asignado al ticket
-        if (role !== "administrador" &&ticket.usuario_id_solicita !== userId &&!isAssigned) {
-            return sendResponse(res, 403, "No tienes permiso para ver este ticket");
-        }
         return sendResponse(res, 200, "Ticket obtenido correctamente", { ticket: result.data });
     },
     getAllTickets: async (req: AuthRequest, res: Response) => {
