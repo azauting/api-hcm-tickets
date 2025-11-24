@@ -33,6 +33,7 @@ export const ticketLogService = {
     getAllMovements: async () => {
         try {
             const [rows] = await pool.query<RowDataPacket[]>(
+                // el movimiento debe traer el nombre del usuario que hizo el movimiento y el nombre del tipo de movimiento
                 `
             SELECT 
                 tm.ticket_movimiento_id,
