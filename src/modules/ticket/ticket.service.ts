@@ -290,17 +290,31 @@ export const ticketService = {
 
             // obtener detalle
             const [detalleRows] = await pool.query<RowDataPacket[]>(
-                `SELECT * FROM ticket_detalle WHERE ticket_id = ?`,
+                `
+                SELECT 
+                    td.ticket_detalle_id,
+                    td.ticket_id,
+                    td.respuesta,
+                    td.soporte_asignado,
+                    u.nombre_completo AS soporte_nombre
+                FROM ticket_detalle td
+                LEFT JOIN usuario u 
+                    ON u.usuario_id = td.soporte_asignado
+                WHERE td.ticket_id = ?
+                `,
                 [ticketId]
             );
 
+
             const detalle: TicketDetalle | null = detalleRows.length > 0 ? detalleRows[0] as TicketDetalle : null;
-            
+
 
             // obtener observaciones
             let observaciones: TicketDetalleObservacion[] = [];
             if (detalle) {
                 const [obsRows] = await pool.query<RowDataPacket[]>(
+                    // el usuario_id debemos obtener su id y su nombre en string
+
                     `SELECT * FROM ticket_detalle_observacion WHERE ticket_detalle_id = ?`,
                     [detalle.ticket_detalle_id]
                 );
@@ -477,7 +491,7 @@ export const ticketService = {
         log.info({ action: 'assignTicket', ticket_id, soporte_asignado }, 'Asignando soporte al ticket');
 
         try {
-            // debemos verificar que el usuario soporte no tenga un ticket asignado, porque para poder asignar un ticket, el soporte no debe tener otro ticket asignado, debemos verificar todos los tickets con su ticket_detalle y ver si el soporte_asignado es igual al usuario que queremos asignar y que el ticket no esté cerrado (estado_id != 5)
+            // debemos verificar que el usuario soporte no tenga un ticket asignado, porque para poder asignar un ticket, el soporte no debe tener otro ticket asignado, debemos verificar todos los tickets con su ticket_detalle y ver si el soporte_asignado es igual al usuario que queremos asignar y que el ticket no esté cerrado (estado_id != 5), ademas de la id del soporte
             const [assignedRows] = await pool.query<RowDataPacket[]>(
                 `SELECT t.ticket_id
                 FROM ticket t
@@ -563,6 +577,7 @@ export const ticketService = {
     isSupportAssigned: async (ticketId: number, soporteId: number): Promise<boolean> => {
         try {
             const [rows] = await pool.query<RowDataPacket[]>(
+                // queremos obtener el usuario 
                 `SELECT td.ticket_detalle_id
                 FROM ticket_detalle td
                 WHERE td.ticket_id = ? AND td.soporte_asignado = ?`,
