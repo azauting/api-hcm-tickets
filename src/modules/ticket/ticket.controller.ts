@@ -112,7 +112,7 @@ export const ticketController = {
         });
 
         return sendResponse(res, 200, 'Ticket cerrado correctamente');
-    }
+    },
 
     updateTicketAdminReview: async (req: AuthRequest, res: Response) => {
         const ticketId = parseIdParam(req.params.id);
