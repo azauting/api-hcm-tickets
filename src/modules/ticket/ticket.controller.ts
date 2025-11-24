@@ -80,32 +80,39 @@ export const ticketController = {
             message: logResult.message
         });
     },
+    // TODO : cerrrar ticket solo admin/soporte - aqui debemos agregar la respuesta final y cambiar estado del ticket a 5
     closeTicket: async (req: AuthRequest, res: Response) => {
-        try {
-            const ticketId = parseIdParam(req.params.id);
+        const ticketId = parseIdParam(req.params.id);
+        const usuario_id = req.user!.id;
 
-            if (ticketId === null) {
-                return sendResponse(res, 400, "El parámetro 'id' es inválido o no es numérico");
-            }
-
-            const userId = req.user!.id;
-            const userRole = req.user!.nombre_rol;
-
-            const result = await ticketService.closeTicket(ticketId, userId, userRole);
-
-            if (result.status !== 'ok') {
-                return sendResponse(res, 400, result.message ?? "No se pudo cerrar el ticket");
-            }
-
-            return sendResponse(res, 200, "Ticket cerrado correctamente", {
-                ticket_id: ticketId
-            });
-
-        } catch (error) {
-            log.error({ error }, "Error en closeTicket");
-            return sendResponse(res, 500, "Error al cerrar el ticket");
+        if (ticketId === null) {
+            return sendResponse(res, 400, "ID de ticket inválido para cierre");
         }
-    },
+
+        const { respuesta_final } = req.body;
+
+        if (!respuesta_final || typeof respuesta_final !== 'string') {
+            return sendResponse(res, 400, 'La respuesta final es requerida para cerrar el ticket');
+        }
+
+        const result = await ticketService.closeTicket(ticketId, respuesta_final, usuario_id);
+
+        if (result.status === 'empty') {
+            return sendResponse(res, 404, 'Ticket no encontrado o no se pudo cerrar');
+        }
+
+        if (result.status === 'error') {
+            return sendResponse(res, 500, result.message ?? 'Error al cerrar ticket');
+        }
+
+        await ticketLogController.createTicketLog({
+            ticket_id: ticketId,
+            movimiento_id: 5,
+            usuario_id
+        });
+
+        return sendResponse(res, 200, 'Ticket cerrado correctamente');
+    }
 
     updateTicketAdminReview: async (req: AuthRequest, res: Response) => {
         const ticketId = parseIdParam(req.params.id);

@@ -97,6 +97,10 @@ export interface TicketDetalleObservacion {
     usuario_id: number;
 }
 
+export interface TicketFinalAnswer {
+    ticket_id: number;
+    respuesta_final: string;
+} 
 
 
 export interface TicketDetalleIntegrante {
@@ -194,7 +198,3 @@ export interface paginationInfo {
     count: number;
 }
 
-export interface TicketFinalAnswer {
-    ticket_id: number;
-    respuesta_final: string;
-} 

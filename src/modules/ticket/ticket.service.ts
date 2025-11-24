@@ -80,6 +80,9 @@ export const ticketService = {
                 WHERE t.ticket_id = ?`,
                 [respuestaFinal, ticketId]
             );
+            if (updateResult.affectedRows === 0) {
+                return { status: 'empty' };
+            }
 
             return { status: 'ok', data: [{ ticket_id: ticketId, respuesta_final: respuestaFinal }] };
         } catch (error) {
