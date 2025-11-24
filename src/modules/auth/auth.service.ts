@@ -42,6 +42,7 @@ export const AuthService = {
                 `SELECT 
             u.usuario_id,
             u.nombre_completo,
+            u.contrasena,
             u.correo,
             r.nombre_rol AS nombre_rol,
             tu.unidad AS unidad

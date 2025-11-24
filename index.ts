@@ -64,7 +64,7 @@ app.use(express.json());
 
 // rutas
 app.get('/', (req, res) => res.send('api-hospital-v1 funcionando correctamente'));
-app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes);
 app.use('/api', userRoutes);
 app.use('/api', ticketLogRoutes);
 app.use('/api', ticketRoutes);
