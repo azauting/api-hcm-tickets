@@ -127,6 +127,7 @@ export interface TicketMovimiento {
 
 export interface JWTPayload {
     id: number;
+    nombre_completo: string;
     correo: string;
     nombre_rol: string;
     unidad?: string | null;
@@ -134,6 +135,7 @@ export interface JWTPayload {
 
 export interface JWTPayload extends JoseJWTPayload {
     id: number;
+    nombre_completo: string;
     correo: string;
     nombre_rol: string;
     unidad?: string | null;

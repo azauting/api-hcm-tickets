@@ -43,7 +43,6 @@ export const AuthService = {
             u.usuario_id,
             u.nombre_completo,
             u.correo,
-            u.contrasena,
             r.nombre_rol AS nombre_rol,
             tu.unidad AS unidad
         FROM usuario u
@@ -87,6 +86,7 @@ export const AuthService = {
                 log.warn('Usando JWT secret de desarrollo (no usar en producción)');
                 return new SignJWT({
                     id: user.usuario_id,
+                    nombre_completo: user.nombre_completo,
                     correo: user.correo,
                     tipo_rol: user.nombre_rol,
                     tipo_unidad: user.unidad ?? null,
@@ -99,6 +99,7 @@ export const AuthService = {
 
         const payload: JWTPayload = {
             id: user.usuario_id,
+            nombre_completo: user.nombre_completo,
             correo: user.correo,
             nombre_rol: user.nombre_rol,
             unidad: user.unidad ?? null,

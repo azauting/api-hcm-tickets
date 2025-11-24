@@ -289,9 +289,12 @@ export const ticketService = {
         }
 
         try {
-            // Obtener ticket
+            // Obtener ticket + su fecha de creación
             const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
-                `SELECT * FROM ticket WHERE ticket_id = ?`,
+                `SELECT t.*,
+                (SELECT fecha FROM ticket_movimiento tm WHERE tm.ticket_id = t.ticket_id ORDER BY fecha ASC LIMIT 1) AS fecha_creacion
+                FROM ticket t
+                WHERE t.ticket_id = ?`,
                 [ticketId]
             );
 
@@ -372,23 +375,14 @@ export const ticketService = {
 
             const whereSql = `WHERE ${whereConditions.join(" AND ")}`;
 
-            const [rows] = await pool.query(
-                `
-                SELECT
-                    ticket_id,
-                    asunto,
-                    descripcion,
-                    telefono,
-                    autor_problema,
-                    ubicacion_id,
-                    estado_id,
-                    prioridad_id,
-                    evento_id
-                FROM ticket
+            // debemos agregar la fecha de creación del ticket desde ticket_movimiento
+            const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
+                `SELECT t.id, t.usuario_id_solicita, t.asunto, t.descripcion, t.telefono, t.autor_problema, t.ubicacion_id, t.direccion_ip, t.estado_de_revision, t.prioridad_id, t.unidad_id, t.estado_id, t.origen_id, t.evento_id,
+                (SELECT fecha FROM ticket_movimiento tm WHERE tm.ticket_id = t.ticket_id ORDER BY fecha ASC LIMIT 1) AS fecha_creacion
+                FROM ticket t
                 ${whereSql}
-                ORDER BY ticket_id DESC
-                LIMIT ? OFFSET ?
-            `,
+                ORDER BY t.ticket_id DESC
+                LIMIT ? OFFSET ?`,
                 [...values, limit, offset]
             );
 

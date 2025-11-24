@@ -293,7 +293,6 @@ export const ticketController = {
         const userId = req.user!.id;
         log.info({ userId }, 'obteniendo tickets del usuario');
 
-
         // numeracion de paginas (cuanto queremos mostrar por pagina)
         const page = Number(req.query.page) || 1;
         const limit = Number(req.query.limit) || 10;
