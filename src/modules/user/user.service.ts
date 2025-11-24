@@ -70,27 +70,22 @@ export const userService = {
             const [rows] = await pool.query<User[] & RowDataPacket[]>(
                 `
                 SELECT 
-                    u.usuario_id, 
-                    u.nombre_completo, 
-                    u.correo, 
-                    u.rol_id, 
+                    u.usuario_id,
+                    u.nombre_completo,
+                    u.correo,
+                    u.rol_id,
                     u.unidad_id
-                FROM usuario u
-                WHERE u.rol_id = (
-                    SELECT rol_id 
-                    FROM tipo_rol 
-                    WHERE nombre_rol = 'soporte'
-                )
-                AND u.usuario_id NOT IN (
-                    SELECT td.soporte_asignado
-                    FROM ticket_detalle td
-                    JOIN ticket t ON td.ticket_id = t.ticket_id
-                    WHERE t.estado_id = (
-                        SELECT estado_id 
-                        FROM tipo_estado 
-                        WHERE estado = 'en proceso'
-                    )
-                )
+                        FROM usuario u
+                        JOIN tipo_rol tr ON tr.rol_id = u.rol_id
+                        WHERE tr.nombre_rol = 'soporte'
+                        AND NOT EXISTS (
+                            SELECT 1
+                            FROM ticket_detalle td
+                            JOIN ticket t       ON t.ticket_id    = td.ticket_id
+                            JOIN tipo_estado te ON te.estado_id   = t.estado_id
+                            WHERE td.soporte_asignado = u.usuario_id
+                            AND te.estado = 'en proceso'
+                        );
                 `
             );
 
