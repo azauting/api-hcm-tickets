@@ -25,7 +25,9 @@ router.post('/tickets/:id/detalle/integrante', verifyToken, checkRole(['soporte'
 
 // TODO: revisar ticket por el admin - estado: ✅
 router.patch('/tickets/:id/review', verifyToken, checkRole(['administrador']),
-    ticketController.updateTicketAdmin);
+    ticketController.updateTicketAdminReview);
+
+
 
 // TODO: asignar ticket por el admin o soporte - estado: ✅
 router.patch('/tickets/:id/assign', verifyToken, checkRole(['soporte', 'administrador']), ticketController.assignTicket);
@@ -37,10 +39,10 @@ router.patch('/tickets/:id/cancel', verifyToken, ticketController.cancelTicket);
 router.patch('/tickets/:id/close', verifyToken, checkRole(['soporte', 'administrador']), ticketController.closeTicket);
 
 
-
 //============================================================
 //                      GET ROUTES (ESPECIFICAS)
 // ============================================================ 
+
 
 
 // TODO: ruta para ver los tickets sin revisar - estado: ✅ (funciona)
@@ -61,7 +63,7 @@ router.get('/tickets/all', verifyToken, checkRole(['administrador']), ticketCont
 // ============================================================ 
 
 // TODO: rutas para ver los tipos listas - estado: ✅
-router.get('/tickets/tipo_estado', verifyToken, ticketController.getStatusType);
+router.get('/tickets/tipo_estado', verifyToken,ticketController.getStatusType);
 router.get('/tickets/tipo_prioridad', verifyToken, ticketController.getPriorityType);
 router.get('/tickets/tipo_origen', verifyToken, ticketController.getOriginType);
 router.get('/tickets/tipo_evento', verifyToken, ticketController.getEventType);
