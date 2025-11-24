@@ -95,6 +95,17 @@ export const ticketController = {
             return sendResponse(res, 400, 'La respuesta final es requerida para cerrar el ticket');
         }
 
+        // 🔥 VALIDAR QUE EL USUARIO LOGUEADO SEA EL SOPORTE ASIGNADO AL TICKET
+        const esAsignado = await ticketService.isSupportAssigned(ticketId, usuario_id);
+        
+        if (!esAsignado) {
+            return sendResponse(
+                res,
+                403,
+                "Solo el soporte asignado al ticket puede cerrarlo"
+            );
+        }
+
         const result = await ticketService.closeTicket(ticketId, respuesta_final, usuario_id);
 
         if (result.status === 'empty') {
