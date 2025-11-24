@@ -636,28 +636,28 @@ export const ticketService = {
                     t.autor_problema,
                     t.direccion_ip,
                     t.estado_de_revision,
-
                     te.estado    AS estado,
                     tp.prioridad AS prioridad,
                     tor.origen   AS origen,
                     tev.evento   AS evento,
                     u.ubicacion  AS ubicacion,
                     tu.unidad    AS unidad,
-                    tm.fecha_creacion AS fecha_creacion
-
+                    (
+                        SELECT fecha
+                        FROM ticket_movimiento tm
+                        WHERE tm.ticket_id = t.ticket_id
+                        ORDER BY fecha ASC
+                        LIMIT 1
+                    ) AS fecha_creacion
                 FROM ticket t
-                JOIN ticket_movimiento tm ON t.ticket_id = tm.ticket_id
                 JOIN tipo_estado    te ON t.estado_id    = te.estado_id
                 JOIN tipo_prioridad tp ON t.prioridad_id = tp.prioridad_id
                 JOIN tipo_origen    tor ON t.origen_id   = tor.origen_id
                 JOIN tipo_evento    tev ON t.evento_id   = tev.evento_id
                 JOIN ubicacion      u  ON t.ubicacion_id = u.ubicacion_id
                 JOIN tipo_unidad    tu ON t.unidad_id    = tu.unidad_id
-                
-                WHERE t.unidad_id = ? 
-                AND t.estado_de_revision = 1
-
-                ORDER BY t.ticket_id DESC`,
+                WHERE t.unidad_id = ? AND t.estado_de_revision = 1
+                ORDER BY t.ticket_id DESC;`,
                 [unidad_id]
             );
             const tickets = rows as Ticket[];
