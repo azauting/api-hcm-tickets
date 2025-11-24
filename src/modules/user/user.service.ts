@@ -63,33 +63,33 @@ export const userService = {
         log.info({ action: 'getAvailableSupports' }, 'Obteniendo soportes disponibles para asignar tickets');
 
         try {
-            // Mostrar todos los usuarios con el rol soporte que no tengan un ticket asignado en estado 'en proceso' (estado_id = 2) pero debemos mostrar TODOS los soportes disponibles
-            // para ver si esta asignado a un ticket, es revisar el ticket detalle y ver si tiene un ticket en estado 'en proceso', para eso hay que ver la tabla ticket y filtrar por estado_id = 2
-            // tabla 
 
-            const [rows] = await pool.query<User[] & RowDataPacket[]>(
+
+            const [rows] = await pool.query<(User & RowDataPacket)[]>(
                 `
                 SELECT 
                     u.usuario_id,
                     u.nombre_completo,
                     u.correo,
                     u.rol_id,
-                    u.unidad_id
-                        FROM usuario u
-                        JOIN tipo_rol tr ON tr.rol_id = u.rol_id
-                        WHERE tr.nombre_rol = 'soporte'
-                        AND NOT EXISTS (
-                            SELECT 1
-                            FROM ticket_detalle td
-                            JOIN ticket t       ON t.ticket_id    = td.ticket_id
-                            JOIN tipo_estado te ON te.estado_id   = t.estado_id
-                            WHERE td.soporte_asignado = u.usuario_id
-                            AND te.estado = 'en proceso'
-                        );
+                    u.unidad_id,
+                    un.unidad AS nombre_unidad
+                FROM usuario u
+                JOIN tipo_rol tr 
+                    ON tr.rol_id = u.rol_id
+                LEFT JOIN tipo_unidad un 
+                    ON u.unidad_id = un.unidad_id
+                WHERE tr.nombre_rol = 'soporte'
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM ticket_detalle td
+                        JOIN ticket t       ON t.ticket_id  = td.ticket_id
+                        JOIN tipo_estado te ON te.estado_id = t.estado_id
+                        WHERE td.soporte_asignado = u.usuario_id
+                        AND te.estado = 'en proceso'
+                    );
                 `
             );
-
-
             if (rows.length === 0) {
                 log.warn('No se encontraron soportes disponibles');
                 return { status: 'empty' };
