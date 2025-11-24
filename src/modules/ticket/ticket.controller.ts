@@ -82,15 +82,15 @@ export const ticketController = {
     },
     // TODO : cerrrar ticket solo admin/soporte - aqui debemos agregar la respuesta final y cambiar estado del ticket a 5
     closeTicket: async (req: AuthRequest, res: Response) => {
+        log.info({ params: req.params, body: req.body }, 'Solicitud para cerrar ticket');
         const ticketId = parseIdParam(req.params.id);
         const usuario_id = req.user!.id;
+        const { respuesta_final } = req.body;
+        log.info({ ticketId, usuario_id, respuesta_final }, 'Cerrar ticket campos');
 
         if (ticketId === null) {
             return sendResponse(res, 400, "ID de ticket inválido para cierre");
         }
-
-        const { respuesta_final } = req.body;
-
         if (!respuesta_final || typeof respuesta_final !== 'string') {
             return sendResponse(res, 400, 'La respuesta final es requerida para cerrar el ticket');
         }
@@ -105,6 +105,8 @@ export const ticketController = {
             return sendResponse(res, 500, result.message ?? 'Error al cerrar ticket');
         }
 
+
+        log.info({ ticketId, usuario_id }, 'Ticket cerrado correctamente');
         await ticketLogController.createTicketLog({
             ticket_id: ticketId,
             movimiento_id: 5,
@@ -117,7 +119,7 @@ export const ticketController = {
     updateTicketAdminReview: async (req: AuthRequest, res: Response) => {
         const ticketId = parseIdParam(req.params.id);
         const usuario_id = req.user!.id;
-
+        log.info({ ticketId, usuario_id }, 'Solicitud para marcar ticket como revisado por admin');
         // validar id
         if (ticketId === null) {
             return sendResponse(res, 400, "ID de ticket inválido");
@@ -140,7 +142,7 @@ export const ticketController = {
         const ticketId = parseIdParam(req.params.id);
         const usuario_id = req.user!.id;
         const updateData = req.body;
-
+        log.info({ ticketId, usuario_id, updateData }, 'Solicitud para actualizar ticket por admin');
         // validar id
         if (ticketId === null) {
             return sendResponse(res, 400, "ID de ticket inválido para actualización");
@@ -195,7 +197,7 @@ export const ticketController = {
         const ticketId = parseIdParam(req.params.id);
         const usuario_id = req.user!.id;
         const rol = req.user!.nombre_rol;
-
+        log.info({ ticketId, usuario_id, rol, requestBody: req.body }, 'Solicitud para asignar ticket');
         if (ticketId === null) {
             return sendResponse(res, 400, "ID de ticket inválido para asignación");
         }
@@ -206,8 +208,10 @@ export const ticketController = {
         if (rol === 'administrador') {
             const { soporte_id } = req.body;
             soporteAsignado = soporte_id  // autoasignar si no envía otro id
+            log.info({ soporteAsignado }, 'Asignación de ticket por administrador');
         } else if (rol === 'soporte') {
             soporteAsignado = usuario_id; // solo autasignación
+            log.info({ soporteAsignado }, 'Autoasignación de ticket por soporte');
         } else {
             return sendResponse(res, 403, 'No tienes permisos para asignar tickets');
         }
@@ -221,12 +225,13 @@ export const ticketController = {
         if (result.status === 'error') {
             return sendResponse(res, 500, result.message ?? 'Error al asignar ticket');
         }
-
+        log.info({ ticketId, soporteAsignado, usuario_id }, 'Ticket asignado correctamente');
         await ticketLogController.createTicketLog({
             ticket_id: ticketId,
             movimiento_id: 3,
             usuario_id
         });
+        log.info({ticketId}, 'Movimiento registrado de Ticket Asignacion')
 
         return sendResponse(res, 200, 'Ticket asignado correctamente', {
             ticket_detalle_id: result.ticket_detalle_id,
@@ -235,7 +240,7 @@ export const ticketController = {
     },
     getTicketById: async (req: AuthRequest, res: Response) => {
         const ticketId = parseIdParam(req.params.id);
-
+        log.info({ ticketId }, 'Solicitud para obtener ticket por ID');
         if (ticketId === null) {
             return sendResponse(res, 400, "ID de ticket inválido para obtener detalles");
         }
@@ -266,7 +271,7 @@ export const ticketController = {
     },
     getAllTickets: async (req: AuthRequest, res: Response) => {
         const role = req.user!.nombre_rol;
-
+        log.info({ usuario_id: req.user!.id, role }, 'Solicitud para obtener todos los tickets');
         // Solo admin puede ver todos los tickets
         if (role !== 'administrador') {
             return sendResponse(res, 403, "No autorizado para ver todos los tickets");
@@ -281,13 +286,17 @@ export const ticketController = {
         if (result.status === "error") {
             return sendResponse(res, 500, result.message);
         }
-
         return sendResponse(res, 200, "Tickets obtenidos correctamente", { tickets: result.data });
     },
     addTicketObservation: async (req: AuthRequest, res: Response) => {
         const ticketId = parseIdParam(req.params.id);
         const userId = req.user!.id;
         const { observacion } = req.body;
+        log.info({ ticketId, userId, observacion }, 'Solicitud para agregar observación al ticket');
+
+        if (ticketId === null) {
+            return sendResponse(res, 400, "ID de ticket inválido para agregar observación");
+        }
 
         if (!observacion || typeof observacion !== 'string') {
             return sendResponse(res, 400, 'La observación es requerida');
@@ -302,14 +311,14 @@ export const ticketController = {
         if (result.status === 'error') {
             return sendResponse(res, 500, result.message);
         }
-
+        log.info({ ticketId, userId }, 'Observación agregada correctamente al ticket');
         // REGISTRAR EL MOVIMIENTO CORRECTO "COMENTARIO_AGREGADO"(ID = 7)
         await ticketLogController.createTicketLog({
             ticket_id: ticketId,
             movimiento_id: 7,
             usuario_id: userId
         });
-
+        log.info({ ticketId, userId }, 'Movimiento de ticket registrado: observación agregada');
         return sendResponse(res, 200, 'Observación agregada correctamente', result.data[0]
         );
     },
@@ -339,12 +348,13 @@ export const ticketController = {
         if (result.status === 'error') {
             return sendResponse(res, 500, result.message || 'Error al cancelar ticket');
         }
+        log.info({ ticketId, userId }, 'Ticket cancelado correctamente');
         await ticketLogController.createTicketLog({
             ticket_id: ticketId,
             movimiento_id: 11,
             usuario_id: userId
         });
-
+        log.info({ ticketId, userId }, 'Movimiento de ticket registrado: cancelación');
 
         return sendResponse(res, 200, 'Ticket cancelado correctamente');
     },
@@ -402,7 +412,7 @@ export const ticketController = {
             return sendResponse(res, 404, result.message ?? 'Ticket no encontrado');
         }
 
-        // 🔥 REGISTRO DEL MOVIMIENTO "INTEGRANTE_AGREGADO" (ID = 15)
+        // REGISTRO DEL MOVIMIENTO "INTEGRANTE_AGREGADO" (ID = 15)
         const objetoMovimiento: TicketMovimientoCreateDTO = {
             ticket_id: ticketId,
             movimiento_id: 15,
