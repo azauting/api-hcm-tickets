@@ -600,6 +600,7 @@ export const ticketService = {
         log.info({ action: 'getUnreviewedTickets' }, 'Obteniendo tickets sin revisar');
         try {
             // aca debemos mostrar la informacion del ticket donde estado_de_revision = 0, ademas con todos sus valores tipo con el valor de texto, por lo tanto hay que hacer joins con las tablas tipo_estado, tipo_prioridad, tipo_origen, tipo_evento, ubicacion, tipo_unidad
+            // ademas agregarle la fecha de creación desde ticket_movimiento
             const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
                 `SELECT 
                     t.ticket_id,
@@ -610,13 +611,20 @@ export const ticketService = {
                     t.autor_problema,
                     t.direccion_ip,
                     t.estado_de_revision,
-
+                    (
+                        SELECT fecha
+                        FROM ticket_movimiento tm
+                        WHERE tm.ticket_id = t.ticket_id
+                        ORDER BY fecha ASC
+                        LIMIT 1
+                    ) AS fecha_creacion,
                     te.estado    AS estado,
                     tp.prioridad AS prioridad,
                     tor.origen   AS origen,
                     tev.evento   AS evento,
                     u.ubicacion  AS ubicacion,
                     tu.unidad    AS unidad
+                
 
                 FROM ticket t
                 JOIN tipo_estado    te ON t.estado_id    = te.estado_id
