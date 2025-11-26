@@ -248,6 +248,11 @@ export const ticketService = {
                 `SELECT 
                     t.ticket_id,
                     t.usuario_id_solicita,
+                    (
+                        SELECT nombre_completo
+                        FROM usuario
+                        WHERE usuario_id = t.usuario_id_solicita    
+                    ) AS usuario_nombre,
                     t.asunto,
                     t.descripcion,
                     t.telefono,
@@ -386,6 +391,11 @@ export const ticketService = {
                 `SELECT 
                     t.ticket_id,
                     t.usuario_id_solicita,
+                    (
+                        SELECT nombre_completo
+                        FROM usuario
+                        WHERE usuario_id = t.usuario_id_solicita    
+                    ) AS usuario_nombre,
                     t.asunto,
                     t.descripcion,
                     t.telefono,
@@ -605,6 +615,11 @@ export const ticketService = {
                 `SELECT 
                     t.ticket_id,
                     t.usuario_id_solicita,
+                    (
+                        SELECT nombre_completo
+                        FROM usuario
+                        WHERE usuario_id = t.usuario_id_solicita    
+                    ) AS usuario_nombre,
                     t.asunto,
                     t.descripcion,
                     t.telefono,
@@ -659,6 +674,11 @@ export const ticketService = {
                 `SELECT 
                     t.ticket_id,
                     t.usuario_id_solicita,
+                    (
+                        SELECT nombre_completo
+                        FROM usuario
+                        WHERE usuario_id = t.usuario_id_solicita    
+                    ) AS usuario_nombre,
                     t.asunto,
                     t.descripcion,
                     t.telefono,
@@ -853,6 +873,11 @@ export const ticketService = {
                 `SELECT 
                 t.ticket_id,
                 t.usuario_id_solicita,
+                (
+                    SELECT nombre_completo
+                    FROM usuario
+                    WHERE usuario_id = t.usuario_id_solicita    
+                ) AS usuario_nombre,
                 t.asunto,
                 t.descripcion,
                 t.telefono,
@@ -902,6 +927,11 @@ export const ticketService = {
                 `SELECT 
                     t.ticket_id,
                     t.usuario_id_solicita,
+                    (
+                        SELECT nombre_completo
+                        FROM usuario
+                        WHERE usuario_id = t.usuario_id_solicita    
+                    ) AS usuario_nombre,
                     t.asunto,
                     t.descripcion,
                     t.telefono,
