@@ -286,15 +286,13 @@ export const ticketController = {
 
         return sendResponse(res, 200, "Ticket obtenido correctamente", { ticket: result.data });
     },
-    getAllTickets: async (req: AuthRequest, res: Response) => {
+    getInternalTickets: async (req: AuthRequest, res: Response) => {
         const role = req.user!.nombre_rol;
         log.info({ usuario_id: req.user!.id, role }, 'Solicitud para obtener todos los tickets');
-        // Solo admin puede ver todos los tickets
-        if (role !== 'administrador') {
-            return sendResponse(res, 403, "No autorizado para ver todos los tickets");
-        }
+        // Solo admin y soporte pueden ver este controlador
 
-        const result = await ticketService.getAllTickets();
+
+        const result = await ticketService.getInternaltickets();
 
         if (result.status === "empty") {
             return sendResponse(res, 404, "No se encontraron tickets registrados");
@@ -304,6 +302,30 @@ export const ticketController = {
             return sendResponse(res, 500, result.message);
         }
         return sendResponse(res, 200, "Tickets obtenidos correctamente", { tickets: result.data });
+    },
+    getAssignedTickets: async (req: AuthRequest, res: Response) => {
+        const usuario_id = req.user!.id;
+        log.info({ usuario_id }, 'Solicitud para obtener tickets asignados al soporte');
+        if (!usuario_id) {
+            return sendResponse(res, 400, "ID de usuario inválido para obtener tickets asignados");
+        }
+        // guardamos el soporte_id del usuario logueado
+        const soporteId = usuario_id;
+        try {
+            const result = await ticketService.getAssignedTickets(soporteId);
+            
+            if (result.status === 'empty') {
+                return sendResponse(res, 404, 'No tienes tickets asignados');
+            }
+            if (result.status === 'error') {
+                return sendResponse(res, 500, result.message);
+            }
+            
+            return sendResponse(res, 200, 'Tickets asignados obtenidos correctamente', { tickets: result.data });
+        } catch (error) {
+            log.error({ error }, 'Error al obtener tickets asignados');
+            return sendResponse(res, 500, 'Error al obtener tickets asignados');
+        }
     },
     addTicketObservation: async (req: AuthRequest, res: Response) => {
         const ticketId = parseIdParam(req.params.id);

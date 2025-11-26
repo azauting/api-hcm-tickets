@@ -55,10 +55,11 @@ router.get('/tickets/mis-tickets', verifyToken, ticketController.getTicketsByUse
 // TODO: ruta para ver los tickets por unidad - estado: ✅
 router.get('/tickets/revisados', verifyToken, checkRole(['administrador', 'soporte']), ticketController.getTicketsByUnit);
 
-// TODO: Obtener todos los tickets (solo admin)
-router.get('/tickets/all', verifyToken, checkRole(['administrador']), ticketController.getAllTickets);
+// TODO: Obtener todos los tickets internos
+router.get('/tickets/internos', verifyToken, checkRole(['administrador', 'soporte']), ticketController.getInternalTickets);
 
-
+// TODO: ruta para ver los tickets que tengan el ticket detalle de el soporte que esta asignado
+router.get('/tickets/mis-tickets/asignados', verifyToken, checkRole(['soporte', 'administrador']), ticketController.getAssignedTickets);
 //============================================================
 //                     ROUTE DE TIPOS
 // ============================================================ 

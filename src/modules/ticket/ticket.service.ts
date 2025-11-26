@@ -844,8 +844,8 @@ export const ticketService = {
         }
 
     },
-    getAllTickets: async (): Promise<ApiResponse<Ticket>> => {
-        log.info({ action: "getAllTickets" }, "Obteniendo todos los tickets");
+    getInternaltickets: async (): Promise<ApiResponse<Ticket>> => {
+        log.info({ action: "getInternaltickets" }, "Obteniendo todos los tickets internos");
         // obtener todos los tickets ordenados por ticket_id DESC
         // join con las tablas tipo_estado, tipo_prioridad, tipo_origen, tipo_evento, ubicacion, tipo_unidad para mostrar los nombres en vez de los IDs
         try {
@@ -874,7 +874,7 @@ export const ticketService = {
             JOIN tipo_evento    tev ON t.evento_id   = tev.evento_id
             JOIN ubicacion      u  ON t.ubicacion_id = u.ubicacion_id
             JOIN tipo_unidad    tu ON t.unidad_id    = tu.unidad_id
-
+            WHERE t.origen_id IN (2,3)
             ORDER BY t.ticket_id DESC`
             );
             const tickets = rows as Ticket[];
@@ -891,6 +891,55 @@ export const ticketService = {
                 status: "error",
                 message: "Error al obtener todos los tickets"
             };
+        }
+    },
+    getAssignedTickets: async (soporteId: number): Promise<ApiResponse<Ticket>> => {
+        log.info({ action: 'getAssignedTickets', soporteId }, 'Obteniendo tickets asignados al soporte');
+
+        try {
+            // Obtener tickets donde el soporte_asignado es igual al soporteId
+            const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
+                `SELECT 
+                    t.ticket_id,
+                    t.usuario_id_solicita,
+                    t.asunto,
+                    t.descripcion,
+                    t.telefono,
+                    t.autor_problema,
+                    t.direccion_ip,
+                    t.estado_de_revision,
+
+                    te.estado    AS estado,
+                    tp.prioridad AS prioridad,
+                    tor.origen   AS origen,
+                    tev.evento   AS evento,
+                    u.ubicacion  AS ubicacion,
+                    tu.unidad    AS unidad
+
+                FROM ticket t
+                JOIN tipo_estado    te ON t.estado_id    = te.estado_id
+                JOIN tipo_prioridad tp ON t.prioridad_id = tp.prioridad_id
+                JOIN tipo_origen    tor ON t.origen_id   = tor.origen_id
+                JOIN tipo_evento    tev ON t.evento_id   = tev.evento_id
+                JOIN ubicacion      u  ON t.ubicacion_id = u.ubicacion_id
+                JOIN tipo_unidad    tu ON t.unidad_id    = tu.unidad_id
+                JOIN ticket_detalle td ON t.ticket_id = td.ticket_id
+                WHERE td.soporte_asignado = ?
+                ORDER BY t.ticket_id DESC;`,
+                [soporteId]
+            );
+
+            const tickets = rows as Ticket[];
+
+            if (!tickets.length) {
+                return { status: 'empty' };
+            }
+
+            return { status: 'ok', data: tickets };
+
+        } catch (error) {
+            log.error({ error, soporteId }, 'Error al obtener tickets asignados');
+            return { status: 'error', message: 'Error al obtener tickets asignados' };
         }
     },
     getTicketDetailsById: async (ticketId: number) => {
