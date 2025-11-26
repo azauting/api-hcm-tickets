@@ -674,38 +674,58 @@ export const ticketService = {
                 `SELECT 
                     t.ticket_id,
                     t.usuario_id_solicita,
-                    (
-                        SELECT nombre_completo
-                        FROM usuario
-                        WHERE usuario_id = t.usuario_id_solicita    
-                    ) AS usuario_nombre,
+                    us.nombre_completo AS usuario_nombre,
                     t.asunto,
                     t.descripcion,
                     t.telefono,
                     t.autor_problema,
                     t.direccion_ip,
                     t.estado_de_revision,
+
                     te.estado    AS estado,
                     tp.prioridad AS prioridad,
                     tor.origen   AS origen,
                     tev.evento   AS evento,
                     u.ubicacion  AS ubicacion,
                     tu.unidad    AS unidad,
-                    (
-                        SELECT fecha
-                        FROM ticket_movimiento tm
-                        WHERE tm.ticket_id = t.ticket_id
-                        ORDER BY fecha ASC
-                        LIMIT 1
-                    ) AS fecha_creacion
+
+                    -- Fecha de creación (primer movimiento)
+                    tm.fecha AS fecha_creacion,
+
+                    -- Soporte asignado
+                    ua.usuario_id AS soporte_asignado_id,
+                    ua.nombre_completo AS soporte_asignado_nombre
+
                 FROM ticket t
+
+                -- Usuario que creó el ticket
+                LEFT JOIN usuario us ON us.usuario_id = t.usuario_id_solicita
+
+                -- Catálogos
                 JOIN tipo_estado    te ON t.estado_id    = te.estado_id
                 JOIN tipo_prioridad tp ON t.prioridad_id = tp.prioridad_id
                 JOIN tipo_origen    tor ON t.origen_id   = tor.origen_id
                 JOIN tipo_evento    tev ON t.evento_id   = tev.evento_id
                 JOIN ubicacion      u  ON t.ubicacion_id = u.ubicacion_id
                 JOIN tipo_unidad    tu ON t.unidad_id    = tu.unidad_id
-                WHERE t.unidad_id = ? AND t.estado_de_revision = 1
+
+                -- Ticket detalle (para obtener soporte asignado)
+                LEFT JOIN ticket_detalle td ON td.ticket_id = t.ticket_id
+
+                -- Usuario soporte asignado
+                LEFT JOIN usuario ua ON ua.usuario_id = td.soporte_asignado
+
+                -- Primer movimiento (fecha de creación)
+                LEFT JOIN (
+                    SELECT ticket_id, MIN(fecha) AS fecha
+                    FROM ticket_movimiento
+                    GROUP BY ticket_id
+                ) tm ON tm.ticket_id = t.ticket_id
+
+                WHERE 
+                    t.unidad_id = ?
+                    AND t.estado_de_revision = 1
+
                 ORDER BY t.ticket_id DESC;`,
                 [unidad_id]
             );
