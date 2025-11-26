@@ -11,19 +11,37 @@ const log = logger.child({ ubicacion: 'ticketController' });
 
 export const ticketController = {
     createTicket: async (req: AuthRequest, res: Response) => {
-        // 1. obtener el usuario_id desde el token
-        const usuario_id_solicita = req.user!.id
-        log.info({ usuario_id_solicita, requestBody: req.body }, 'Recibiendo data para crear nuevo ticket');
+        const usuario_id_solicita = req.user!.id;
+        const rol = req.user!.nombre_rol; // solicitante | soporte | administrador
 
-        // 2. validar los datos del ticket
+        log.info({ usuario_id_solicita, requestBody: req.body }, 'Creando nuevo ticket');
+
+        // 1. Validar los datos del ticket enviados por el body
         const { isValid, message, ticket: ticketValidado } = validadorTicketForm(req.body);
         if (!isValid || !ticketValidado) {
             return sendResponse(res, 400, `Datos del ticket inválidos: ${message}`);
         }
 
-        log.info({ usuario_id_solicita, ticketValidado }, 'Datos del ticket validados');
+        // 2. Definir ORIGEN según el tipo de usuario
+        let origen_id = 1;
+        if (rol === "soporte") origen_id = 2;
+        if (rol === "administrador") origen_id = 3;
 
-        // 3. preparar data
+        // 3. Definir EVENTO según el rol
+        // Solicitante → siempre requerimiento (1)
+        // Soporte/Admin → deben enviar evento_id válido
+        let evento_id = 1;
+
+        if (rol === "soporte" || rol === "administrador") {
+            if (!req.body.evento_id || ![1, 2, 3].includes(req.body.evento_id)) {
+                return sendResponse(res, 400, "Debe enviar un evento_id válido (1,2,3)");
+            }
+            evento_id = req.body.evento_id;
+        }
+
+        log.info({ usuario_id_solicita, ticketValidado, origen_id, evento_id }, 'Datos validados para crear ticket');
+
+        // 4. Crear objeto final
         const ticketObject: TicketCreateDTO = {
             usuario_id_solicita,
             asunto: ticketValidado.asunto,
@@ -36,11 +54,11 @@ export const ticketController = {
             prioridad_id: 1,
             unidad_id: 1,
             estado_id: 1,
-            origen_id: 1,
-            evento_id: 1,
+            origen_id,
+            evento_id,
         };
 
-        // 4. crear ticket
+        // 5. Crear ticket
         const result = await ticketService.createTicket(ticketObject);
         if (result.status === 'error') {
             return sendResponse(res, 500, result.message);
@@ -48,38 +66,34 @@ export const ticketController = {
 
         const ticket_id = result.ticket_id;
 
-        // 5. crear ticket_detalle
+        // 6. Crear detalle del ticket
         const detalle = await ticketService.createTicketDetail(ticket_id);
         if (detalle.status === 'error') {
             await ticketService.deleteFullTicket(ticket_id);
             return sendResponse(res, 500, 'Error al crear ticket_detalle');
         }
 
-        log.info({ usuario_id_solicita, ticket_id }, 'Ticket creado');
-
-        // 6. registrar movimiento inicial
+        // 7. Registrar movimiento inicial
         const objetoMovimiento: TicketMovimientoCreateDTO = {
-            ticket_id: ticket_id,
-            movimiento_id: 1, // creación
+            ticket_id,
+            movimiento_id: 1, // creado
             usuario_id: usuario_id_solicita,
         };
 
         const logResult = await ticketLogController.createTicketLog(objetoMovimiento);
 
-        // ⚠️ AQUÍ ES DONDE VA EL ROLLBACK
         if (logResult.status === "error") {
             await ticketService.deleteFullTicket(ticket_id);
             return sendResponse(res, 500, "Error al registrar movimiento del ticket");
         }
 
-        log.info({ ticket_id }, 'Log del ticket creado correctamente');
-
-        // 7. respuesta final
+        // 8. Respuesta final
         return sendResponse(res, 201, 'Ticket creado correctamente', {
             ticket_id,
             message: logResult.message
         });
     },
+
     // TODO : cerrrar ticket solo admin/soporte - aqui debemos agregar la respuesta final y cambiar estado del ticket a 5
     closeTicket: async (req: AuthRequest, res: Response) => {
         log.info({ params: req.params, body: req.body }, 'Solicitud para cerrar ticket');
@@ -97,7 +111,7 @@ export const ticketController = {
 
         // 🔥 VALIDAR QUE EL USUARIO LOGUEADO SEA EL SOPORTE ASIGNADO AL TICKET
         const esAsignado = await ticketService.isSupportAssigned(ticketId, usuario_id);
-        
+
         if (!esAsignado) {
             return sendResponse(
                 res,
