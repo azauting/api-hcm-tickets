@@ -904,6 +904,13 @@ export const ticketService = {
                 t.autor_problema,
                 t.direccion_ip,
                 t.estado_de_revision,
+                (
+                        SELECT fecha 
+                        FROM ticket_movimiento tm 
+                        WHERE tm.ticket_id = t.ticket_id 
+                        ORDER BY fecha ASC 
+                        LIMIT 1
+                ) AS fecha_creacion,
 
                 te.estado    AS estado,
                 tp.prioridad AS prioridad,
@@ -958,6 +965,13 @@ export const ticketService = {
                     t.autor_problema,
                     t.direccion_ip,
                     t.estado_de_revision,
+                    (
+                        SELECT fecha 
+                        FROM ticket_movimiento tm 
+                        WHERE tm.ticket_id = t.ticket_id 
+                        ORDER BY fecha ASC 
+                        LIMIT 1
+                    ) AS fecha_creacion,
 
                     te.estado    AS estado,
                     tp.prioridad AS prioridad,
