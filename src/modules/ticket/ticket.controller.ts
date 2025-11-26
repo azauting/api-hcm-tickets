@@ -93,7 +93,6 @@ export const ticketController = {
             message: logResult.message
         });
     },
-
     // TODO : cerrrar ticket solo admin/soporte - aqui debemos agregar la respuesta final y cambiar estado del ticket a 5
     closeTicket: async (req: AuthRequest, res: Response) => {
         log.info({ params: req.params, body: req.body }, 'Solicitud para cerrar ticket');

@@ -3,6 +3,7 @@ import pool from '../../config/db.config';
 import type { GetUserResult, GetAllUsersResult, GetAllSupportsResult } from '../../utils/types';
 import type { User } from '../../utils/interfaces';
 import type { RowDataPacket } from 'mysql2';
+import bcrypt from 'bcryptjs';
 
 const log = logger.child({ ubicacion: 'userService' });
 
@@ -41,9 +42,9 @@ export const userService = {
         try {
             const [rows] = await pool.query<User[] & RowDataPacket[]>(
                 `
-        SELECT usuario_id, nombre_completo, correo, rol_id, unidad_id 
-        FROM usuario
-        `
+                SELECT usuario_id, nombre_completo, correo, rol_id, unidad_id 
+                FROM usuario
+                `
             );
 
             if (rows.length === 0) {
@@ -58,13 +59,90 @@ export const userService = {
             throw error;
         }
     },
+    async updateUserRole(userId: number, newRoleId: number, adminId: number): Promise<{ status: 'ok' | 'not_found' | 'error' }> {
+        log.info({ action: 'updateUserRole', userId, newRoleId, adminId }, 'Actualizando rol de usuario');
+        try {
+            const [result] = await pool.query<RowDataPacket[]>(
+                `
+                UPDATE usuario
+                SET rol_id = ?
+                WHERE usuario_id = ?
+                `,
+                [newRoleId, userId]
+            );
+
+            const affectedRows = (result as any).affectedRows;
+
+            if (affectedRows === 0) {
+                log.warn({ userId }, 'Usuario no encontrado para actualizar rol');
+                return { status: 'not_found' };
+            }
+            
+
+            log.info({ usuario_id: userId, nuevo_rol_id: newRoleId }, 'Rol de usuario actualizado correctamente');
+            return { status: 'ok' };
+        } catch (error) {
+            log.error({ error, userId }, 'Error al actualizar rol de usuario');
+            return { status: 'error' };
+        }
+    },
+    updateUserUnit: async (adminId: number, userId: number, newUnitId: number): Promise<{ status: 'ok' | 'not_found' | 'error' }> => {
+        log.info({ action: 'updateUserUnit', userId, newUnitId, adminId }, 'Actualizando unidad de usuario');
+        try {
+            const [rows] = await pool.query<RowDataPacket[]>(
+                `
+                UPDATE usuario
+                SET unidad_id = ?
+                WHERE usuario_id = ?
+                `,
+                [newUnitId, userId]
+            );
+
+            const affectedRows = (rows as any).affectedRows;
+
+            if (affectedRows === 0) {
+                log.warn({ userId }, 'Usuario no encontrado para actualizar unidad');
+                return { status: 'not_found' };
+            }
+
+            log.info({ usuario_id: userId, nueva_unidad_id: newUnitId }, 'Unidad de usuario actualizada correctamente');
+            return { status: 'ok' };
+        } catch (error) {
+            log.error({ error, userId }, 'Error al actualizar unidad de usuario');
+            return { status: 'error' };
+        }
+    },
+    updateUserPassword: async (userId: number, newPassword: string, adminId: number): Promise<{ status: 'ok' | 'not_found' | 'error' }> => {
+        log.info({ action: 'updateUserPassword', userId, adminId }, 'Actualizando contraseña de usuario');
+        try {
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+            const [rows] = await pool.query<RowDataPacket[]>(
+                `
+                UPDATE usuario
+                SET contrasena = ?
+                WHERE usuario_id = ?
+                `,
+                [hashedPassword, userId]
+            );
+
+            const affectedRows = (rows as any).affectedRows;
+
+            if (affectedRows === 0) {
+                log.warn({ userId }, 'Usuario no encontrado para actualizar contraseña');
+                return { status: 'not_found' };
+            }
+
+            log.info({ usuario_id: userId }, 'Contraseña de usuario actualizada correctamente');
+            return { status: 'ok' };
+        } catch (error) {
+            log.error({ error, userId }, 'Error al actualizar contraseña de usuario');
+            return { status: 'error' };
+        }
+    },
     /* GetAvailableSupports - Obtener soportes disponibles para asignar tickets */
     async getAvailableSupports(): Promise<GetAllSupportsResult> {
         log.info({ action: 'getAvailableSupports' }, 'Obteniendo soportes disponibles para asignar tickets');
-
         try {
-
-
             const [rows] = await pool.query<(User & RowDataPacket)[]>(
                 `
                 SELECT 
