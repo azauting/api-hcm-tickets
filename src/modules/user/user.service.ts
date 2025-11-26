@@ -12,11 +12,23 @@ export const userService = {
     async getUser(userId: number): Promise<GetUserResult> {
         log.info({ action: 'getUser', userId }, 'Obteniendo usuario por ID');
         try {
+            // obtener el string de rol y unidad
             const [rows] = await pool.query<User[] & RowDataPacket[]>(
                 `
-                SELECT usuario_id, nombre_completo, correo, rol_id, unidad_id 
-                FROM usuario 
-                WHERE usuario_id = ?
+                SELECT 
+                    u.usuario_id,
+                    u.nombre_completo,
+                    u.correo,
+                    u.rol_id,
+                    u.unidad_id,
+                    tr.nombre_rol,
+                    un.unidad AS nombre_unidad
+                FROM usuario u
+                JOIN tipo_rol tr 
+                    ON tr.rol_id = u.rol_id
+                LEFT JOIN tipo_unidad un 
+                    ON u.unidad_id = un.unidad_id
+                WHERE u.usuario_id = ?
                 `,
                 [userId]
             );
@@ -40,10 +52,22 @@ export const userService = {
         log.info({ action: 'getAllUsers' }, 'Obteniendo todos los usuarios');
 
         try {
+            // obtener los strings, no los id del rol y unidad
             const [rows] = await pool.query<User[] & RowDataPacket[]>(
                 `
-                SELECT usuario_id, nombre_completo, correo, rol_id, unidad_id 
-                FROM usuario
+                SELECT 
+                    u.usuario_id,
+                u.nombre_completo,
+                u.correo,
+                u.rol_id,
+                u.unidad_id,
+                tr.nombre_rol,
+                un.unidad AS nombre_unidad
+                FROM usuario u
+                JOIN tipo_rol tr 
+                    ON tr.rol_id = u.rol_id
+                LEFT JOIN tipo_unidad un 
+                    ON u.unidad_id = un.unidad_id
                 `
             );
 
@@ -67,7 +91,7 @@ export const userService = {
                 UPDATE usuario
                 SET rol_id = ?
                 WHERE usuario_id = ?
-                `,
+                    `,
                 [newRoleId, userId]
             );
 
@@ -94,7 +118,7 @@ export const userService = {
                 UPDATE usuario
                 SET unidad_id = ?
                 WHERE usuario_id = ?
-                `,
+                    `,
                 [newUnitId, userId]
             );
 
@@ -121,7 +145,7 @@ export const userService = {
                 UPDATE usuario
                 SET contrasena = ?
                 WHERE usuario_id = ?
-                `,
+                    `,
                 [hashedPassword, userId]
             );
 
@@ -147,26 +171,26 @@ export const userService = {
                 `
                 SELECT 
                     u.usuario_id,
-                    u.nombre_completo,
-                    u.correo,
-                    u.rol_id,
-                    u.unidad_id,
-                    un.unidad AS nombre_unidad
+                u.nombre_completo,
+                u.correo,
+                u.rol_id,
+                u.unidad_id,
+                un.unidad AS nombre_unidad
                 FROM usuario u
                 JOIN tipo_rol tr 
                     ON tr.rol_id = u.rol_id
                 LEFT JOIN tipo_unidad un 
                     ON u.unidad_id = un.unidad_id
                 WHERE tr.nombre_rol = 'soporte'
-                    AND NOT EXISTS (
-                        SELECT 1
+                    AND NOT EXISTS(
+                    SELECT 1
                         FROM ticket_detalle td
-                        JOIN ticket t       ON t.ticket_id  = td.ticket_id
+                        JOIN ticket t       ON t.ticket_id = td.ticket_id
                         JOIN tipo_estado te ON te.estado_id = t.estado_id
                         WHERE td.soporte_asignado = u.usuario_id
                         AND te.estado = 'en proceso'
-                    );
-                `
+                );
+            `
             );
             if (rows.length === 0) {
                 log.warn('No se encontraron soportes disponibles');
