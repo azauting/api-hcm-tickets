@@ -6,7 +6,7 @@ import type { AuthRequest } from '../../utils/interfaces';
 
 const log = logger.child({ ubicacion: 'userController' });
 
-export const ticketController = {
+export const userController = {
     getUserById: async (req: Request, res: Response) => {
         try {
             const userId = parseIdParam(req.params.id);
@@ -72,6 +72,7 @@ export const ticketController = {
     },
     updateUserRole: async (req: AuthRequest, res: Response) => {
         try {
+            log.info("Cambiando Rol")
             const userId = parseIdParam(req.params.id);
             // obtenemos la id del admin desde req.user.usuario_id
             const adminId = req.user!.id;
@@ -85,7 +86,7 @@ export const ticketController = {
 
             log.info({ adminId, userId, newRoleId }, 'Solicitando cambio de rol de usuario');
 
-            const result = await userService.updateUserRole(adminId, userId, newRoleId);
+            const result = await userService.updateUserRole(newRoleId, userId, adminId,);
             if (result.status === 'not_found') {
                 log.info({ userId }, 'Usuario no encontrado para cambio de rol');
                 return sendResponse(res, 404, 'Usuario no encontrado');

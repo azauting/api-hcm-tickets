@@ -83,7 +83,7 @@ export const userService = {
             throw error;
         }
     },
-    async updateUserRole(userId: number, newRoleId: number, adminId: number): Promise<{ status: 'ok' | 'not_found' | 'error' }> {
+    async updateUserRole(newRoleId: number, userId: number, adminId: number): Promise<{ status: 'ok' | 'not_found' | 'error' }> {
         log.info({ action: 'updateUserRole', userId, newRoleId, adminId }, 'Actualizando rol de usuario');
         try {
             const [result] = await pool.query<RowDataPacket[]>(
