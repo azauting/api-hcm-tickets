@@ -11,6 +11,7 @@ import userRoutes from './src/modules/user/user.route';
 import authRoutes from './src/modules/auth/auth.route';
 import ticketRoutes from './src/modules/ticket/ticket.route';
 import ticketLogRoutes from './src/modules/ticketLog/ticketLog.route';
+import kpiRoutes from './src/modules/kpis/kpis.route'
 
 
 const app = express();
@@ -64,10 +65,12 @@ const hashPasswords = async () => {
 
 // rutas
 app.get('/', (req, res) => res.send('api-hospital-v1 funcionando correctamente'));
+app.use('/api', kpiRoutes)
 app.use('/auth', authRoutes);
 app.use('/api', userRoutes);
 app.use('/api', ticketLogRoutes);
 app.use('/api', ticketRoutes);
+
 
 const startServer = async () => {
     try {
