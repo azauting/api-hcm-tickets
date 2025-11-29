@@ -7,6 +7,8 @@ import { verifyToken } from '../../middlewares/verifyToken';
 const router = express.Router();
 
 router.get('/users', userController.getUsers)
+// en proceso de revision
+router.post('/users', verifyToken, checkRole(['administrador']), userController.createUser);
 router.get('/users/:id', userController.getUserById); 
 router.patch('/users/:id/update-password', verifyToken, checkRole(['administrador']), userController.updateUserPassword);
 router.get('/user/soportes-disponibles', verifyToken, checkRole(['administrador', 'soporte']), userController.getAvailableSupports);

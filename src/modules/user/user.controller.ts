@@ -7,6 +7,28 @@ import type { AuthRequest } from '../../utils/interfaces';
 const log = logger.child({ ubicacion: 'userController' });
 
 export const userController = {
+    createUser: async (req: AuthRequest, res: Response) => {
+        try {
+            log.info('Creando nuevo usuario');
+            const adminId = req.user!.id;
+            const { nombre_usuario, correo, contrasena, id_rol, id_unidad } = req.body;
+            const result = await userService.createUser(nombre_usuario, correo, contrasena, id_rol, id_unidad);
+
+            if (result.status === 'conflict') {
+                log.info({ correo }, 'El correo ya está en uso');
+                return sendResponse(res, 409, 'El correo ya está en uso');
+            }
+
+            // result.status === 'ok'
+            const { newUserId } = result;
+            log.info({ newUserId, nombre_usuario }, 'Usuario creado correctamente');
+            return sendResponse(res, 201, 'Usuario creado correctamente', { usuario_id: newUserId });
+
+        } catch (error) {
+            log.error({ error }, 'Error interno al crear nuevo usuario');
+            return sendResponse(res, 500, 'Error interno del servidor');
+        }
+    },
     getUserById: async (req: Request, res: Response) => {
         try {
             const userId = parseIdParam(req.params.id);
@@ -129,7 +151,7 @@ export const userController = {
             return sendResponse(res, 500, 'Error interno del servidor');
         }
     },
-    // Funciones futuras para actualizar contraseña pendiente
+    // Funciones futuras para actualizar contraseña pendiente arreglar
     updateUserPassword: async (req: AuthRequest, res: Response) => {
         try {
             const userId = parseIdParam(req.params.id);

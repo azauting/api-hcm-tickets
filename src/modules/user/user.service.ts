@@ -8,8 +8,38 @@ import bcrypt from 'bcryptjs';
 const log = logger.child({ ubicacion: 'userService' });
 
 export const userService = {
+    createUser: async (nombre_usuario: string, correo:string, contrasena: string, id_rol: number, id_unidad: number | null): Promise<{ status: 'ok'; newUserId: number } | { status: 'conflict' }> => {
+        log.info({ action: 'createUser', nombre_usuario, id_rol, id_unidad}, 'Creando nuevo usuario');
+        try {
+            // Verificar si el nombre de usuario ya existe
+            const [existingUsers] = await pool.query<RowDataPacket[]>(
+                'SELECT usuario_id FROM usuario WHERE correo = ?',
+                [correo]
+            );
+            if (existingUsers.length > 0) {
+                log.warn({ correo }, 'El correo ya está en uso');
+                return { status: 'conflict' };
+            }
+            const hashedPassword = await bcrypt.hash(contrasena, 10);
+            
+            const [result] = await pool.query<RowDataPacket[]>(
+                `
+                INSERT INTO usuario (nombre_completo, correo, contrasena, rol_id, unidad_id)
+                VALUES (?, ?, ?, ?, ?)
+                `,
+                [nombre_usuario, correo, hashedPassword, id_rol, id_unidad]
+            );
+            
+            const newUserId = (result as any).insertId;
+            log.info({ newUserId, nombre_usuario }, 'Usuario creado correctamente');
+            return { status: 'ok', newUserId };
+        } catch (error) {
+            log.error({ error, nombre_usuario }, 'Error al crear nuevo usuario');
+            throw error;
+        }
+    },
     /* GetUser - Obtener un usuario por ID */
-    async getUser(userId: number): Promise<GetUserResult> {
+    getUser: async (userId: number): Promise<GetUserResult> => {
         log.info({ action: 'getUser', userId }, 'Obteniendo usuario por ID');
         try {
             // obtener el string de rol y unidad
@@ -48,7 +78,7 @@ export const userService = {
         }
     },
     /* GetAllUser - Obtener todos los usuarios */
-    async getAllUsers(): Promise<GetAllUsersResult> {
+    getAllUsers: async (): Promise<GetAllUsersResult> => {
         log.info({ action: 'getAllUsers' }, 'Obteniendo todos los usuarios');
 
         try {
@@ -83,7 +113,7 @@ export const userService = {
             throw error;
         }
     },
-    async updateUserRole(newRoleId: number, userId: number, adminId: number): Promise<{ status: 'ok' | 'not_found' | 'error' }> {
+    updateUserRole: async (newRoleId: number, userId: number, adminId: number): Promise<{ status: 'ok' | 'not_found' | 'error' }> => {
         log.info({ action: 'updateUserRole', userId, newRoleId, adminId }, 'Actualizando rol de usuario');
         try {
             const [result] = await pool.query<RowDataPacket[]>(
