@@ -383,7 +383,7 @@ export const kpiService = {
                 tu.unidad,
                 -- tickets resueltos
                 (SELECT COUNT(*)
-                ROM ticket_movimiento m
+                FROM ticket_movimiento m
                 WHERE m.movimiento_id = 5
                 AND m.usuario_id = u.usuario_id) AS tickets_resueltos,
                 (SELECT COUNT(*)

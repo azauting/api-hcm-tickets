@@ -8,17 +8,13 @@ router.use(verifyToken, checkRole(['administrador']));
 
 // todo:  KPIS DEL DÍA
 
-router.get('/analytics/tickets-creados-hoy', kpiController.getTicketsCreatedToday
-);
+router.get('/analytics/tickets-creados-hoy', kpiController.getTicketsCreatedToday);
 
-router.get('/analytics/tickets-cerrados-hoy',kpiController.getTicketsClosedToday
-);
+router.get('/analytics/tickets-cerrados-hoy',kpiController.getTicketsClosedToday);
 
-router.get('/analytics/tickets-abiertos', kpiController.getOpenTickets
-);
+router.get('/analytics/tickets-abiertos', kpiController.getOpenTickets);
 
-router.get('/analytics/tickets-en-proceso', kpiController.getTicketsInProgress
-);
+router.get('/analytics/tickets-en-proceso', kpiController.getTicketsInProgress);
 
 
 
@@ -67,8 +63,7 @@ router.get('/analytics/tiempo/anio', kpiController.getTicketsByYear
 
 // todo : KPIS AGUS
 
-
-router.get("/analytics/-resueltos-mes", kpiController.getResolvedTicketsByMonth
+router.get("/analytics/resueltos-mes", kpiController.getResolvedTicketsByMonth
 );
 
 router.get("/analytics/mttr-mensual", kpiController.getMTTRByMonth
