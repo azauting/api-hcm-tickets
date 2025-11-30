@@ -254,7 +254,8 @@ export const kpiService = {
                 COUNT(*) AS resueltos
             FROM ticket_movimiento m
             WHERE m.movimiento_id = 5
-            GROUP BY MONTH(m.fecha)
+            AND YEAR(m.fecha) = YEAR(CURDATE()) -- IMPORTANTE: Solo año actual
+            GROUP BY MONTH(m.fecha), MONTHNAME(m.fecha) -- Agrupamos por ambos para evitar error estricto
             ORDER BY MONTH(m.fecha);`
         );
         return rows;
