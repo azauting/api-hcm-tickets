@@ -126,7 +126,7 @@ export const tipoService = {
             throw error;
         }
     },
-    updateoArea: async (areaId: number, newNombreArea: string): Promise<{ status: 'ok' | 'not_found' | 'conflict' }> => {
+    updateArea: async (areaId: number, newNombreArea: string): Promise<{ status: 'ok' | 'not_found' | 'conflict' }> => {
         log.info({ action: 'updateArea', areaId, newNombreArea }, 'Actualizando area');
         try {
             // Verificar si el area existe

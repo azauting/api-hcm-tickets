@@ -3,6 +3,7 @@ import { logger } from '../../utils/logger';
 import { userService } from './user.service';
 import { parseIdParam, sendResponse } from '../../utils/helper';
 import type { AuthRequest } from '../../utils/interfaces';
+import { act } from 'react';
 
 const log = logger.child({ ubicacion: 'userController' });
 
@@ -12,7 +13,8 @@ export const userController = {
             log.info('Creando nuevo usuario');
             const adminId = req.user!.id;
             const { nombre_usuario, correo, contrasena, id_rol, id_unidad } = req.body;
-            const result = await userService.createUser(nombre_usuario, correo, contrasena, id_rol, id_unidad);
+            const activo = 1; // nuevo campo activo por defecto en 1
+            const result = await userService.createUser(nombre_usuario, correo, contrasena, id_rol, id_unidad, activo);
 
             if (result.status === 'conflict') {
                 log.info({ correo }, 'El correo ya está en uso');
@@ -179,11 +181,5 @@ export const userController = {
         };
     },
 };
-
-
-
-
-
-
 
 

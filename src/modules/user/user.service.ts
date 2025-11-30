@@ -8,7 +8,7 @@ import bcrypt from 'bcryptjs';
 const log = logger.child({ ubicacion: 'userService' });
 
 export const userService = {
-    createUser: async (nombre_usuario: string, correo:string, contrasena: string, id_rol: number, id_unidad: number | null): Promise<{ status: 'ok'; newUserId: number } | { status: 'conflict' }> => {
+    createUser: async (nombre_usuario: string, correo:string, contrasena: string, id_rol: number, id_unidad: number | null, activo: number): Promise<{ status: 'ok'; newUserId: number } | { status: 'conflict' }> => {
         log.info({ action: 'createUser', nombre_usuario, id_rol, id_unidad}, 'Creando nuevo usuario');
         try {
             // Verificar si el nombre de usuario ya existe
@@ -24,10 +24,10 @@ export const userService = {
             
             const [result] = await pool.query<RowDataPacket[]>(
                 `
-                INSERT INTO usuario (nombre_completo, correo, contrasena, rol_id, unidad_id)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO usuario (nombre_completo, correo, contrasena, rol_id, unidad_id, activo)
+                VALUES (?, ?, ?, ?, ?, ?)
                 `,
-                [nombre_usuario, correo, hashedPassword, id_rol, id_unidad]
+                [nombre_usuario, correo, hashedPassword, id_rol, id_unidad, activo]
             );
             
             const newUserId = (result as any).insertId;
@@ -52,6 +52,7 @@ export const userService = {
                     u.rol_id,
                     u.unidad_id,
                     tr.nombre_rol,
+                    u.activo,
                     un.unidad AS nombre_unidad
                 FROM usuario u
                 JOIN tipo_rol tr 
@@ -92,7 +93,8 @@ export const userService = {
                 u.rol_id,
                 u.unidad_id,
                 tr.nombre_rol,
-                un.unidad AS nombre_unidad
+                un.unidad AS nombre_unidad,
+                u.activo
                 FROM usuario u
                 JOIN tipo_rol tr 
                     ON tr.rol_id = u.rol_id
@@ -219,8 +221,7 @@ export const userService = {
                         JOIN tipo_estado te ON te.estado_id = t.estado_id
                         WHERE td.soporte_asignado = u.usuario_id
                         AND te.estado = 'en proceso'
-                );
-            `
+                );`
             );
             if (rows.length === 0) {
                 log.warn('No se encontraron soportes disponibles');
@@ -235,4 +236,3 @@ export const userService = {
         }
     }
 };
-

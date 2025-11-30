@@ -4,93 +4,93 @@ import { verifyToken } from '../../middlewares/verifyToken';
 import { checkRole } from '../../middlewares/checkRole';
 
 const router = express.Router();
-
+router.use(verifyToken, checkRole(['administrador']));
 
 // todo:  KPIS DEL DÍA
 
-router.get('/analytics/tickets-creados-hoy', verifyToken, checkRole(['administrador']), kpiController.getTicketsCreatedToday
+router.get('/analytics/tickets-creados-hoy', kpiController.getTicketsCreatedToday
 );
 
-router.get('/analytics/tickets-cerrados-hoy', verifyToken, checkRole(['administrador']), kpiController.getTicketsClosedToday
+router.get('/analytics/tickets-cerrados-hoy',kpiController.getTicketsClosedToday
 );
 
-router.get('/analytics/tickets-abiertos', verifyToken, checkRole(['administrador']), kpiController.getOpenTickets
+router.get('/analytics/tickets-abiertos', kpiController.getOpenTickets
 );
 
-router.get('/analytics/tickets-en-proceso', verifyToken, checkRole(['administrador']), kpiController.getTicketsInProgress
+router.get('/analytics/tickets-en-proceso', kpiController.getTicketsInProgress
 );
 
 
 
 // todo: KPIS POR UNIDAD
 
-router.get('/analytics/unidades/creados-hoy', verifyToken, checkRole(['administrador']), kpiController.getTicketsCreatedTodayByUnit
+router.get('/analytics/unidades/creados-hoy', kpiController.getTicketsCreatedTodayByUnit
 );
 
-router.get('/analytics/unidades/mes', verifyToken, checkRole(['administrador']), kpiController.getTicketsThisMonthByUnit
+router.get('/analytics/unidades/mes', kpiController.getTicketsThisMonthByUnit
 );
 
-router.get('/analytics/unidades/mttr', verifyToken, checkRole(['administrador']), kpiController.getMTTRByUnit
+router.get('/analytics/unidades/mttr', kpiController.getMTTRByUnit
 );
 
-router.get('/analytics/unidades/cerrados', verifyToken, checkRole(['administrador']), kpiController.getClosedTicketsByUnit
+router.get('/analytics/unidades/cerrados', kpiController.getClosedTicketsByUnit
 );
 
-router.get('/analytics/unidades/abiertos', verifyToken, checkRole(['administrador']), kpiController.getOpenTicketsByUnit
+router.get('/analytics/unidades/abiertos', kpiController.getOpenTicketsByUnit
 );
 
-router.get('/analytics/unidades/en-proceso', verifyToken, checkRole(['administrador']), kpiController.getTicketsInProgressByUnit
+router.get('/analytics/unidades/en-proceso', kpiController.getTicketsInProgressByUnit
 );
 
 
 
 // todo : RENDIMIENTO DEL SOPORTE
 
-router.get('/analytics/soporte/rendimiento', verifyToken, checkRole(['administrador']), kpiController.getSupportPerformance
+router.get('/analytics/soporte/rendimiento', kpiController.getSupportPerformance
 );
 
 // todo: SERIES DE TIEMPO (HISTÓRICO)
 
-router.get('/analytics/tiempo/dia', verifyToken, checkRole(['administrador']), kpiController.getTicketsByDay
+router.get('/analytics/tiempo/dia', kpiController.getTicketsByDay
 );
 
-router.get('/analytics/tiempo/semana', verifyToken, checkRole(['administrador']), kpiController.getTicketsByWeek
+router.get('/analytics/tiempo/semana', kpiController.getTicketsByWeek
 );
 
-router.get('/analytics/tiempo/mes', verifyToken, checkRole(['administrador']), kpiController.getTicketsByMonth
+router.get('/analytics/tiempo/mes', kpiController.getTicketsByMonth
 );
 
 // ! este endpoint va a recibir un año
-router.get('/analytics/tiempo/anio', verifyToken, checkRole(['administrador']), kpiController.getTicketsByYear
+router.get('/analytics/tiempo/anio', kpiController.getTicketsByYear
 );
 
 
 // todo : KPIS AGUS
 
 
-router.get("/analytics/-resueltos-mes", verifyToken, checkRole(['administrador']), kpiController.getResolvedTicketsByMonth
+router.get("/analytics/-resueltos-mes", kpiController.getResolvedTicketsByMonth
 );
 
-router.get("/analytics/mttr-mensual", verifyToken, checkRole(['administrador']), kpiController.getMTTRByMonth
+router.get("/analytics/mttr-mensual", kpiController.getMTTRByMonth
 );
 
 //todo : falta la eficacia de la unidad ()
-router.get("/analytics/unidades/consolidado", verifyToken, checkRole(['administrador']), kpiController.getUnitConsolidatedStats
+router.get("/analytics/unidades/consolidado", kpiController.getUnitConsolidatedStats
 );
 
-router.get('/analytics/unidades/resueltos-mensual', verifyToken, checkRole(['administrador']), kpiController.getMonthlyResolvedTicketsByUnit
+router.get('/analytics/unidades/resueltos-mensual', kpiController.getMonthlyResolvedTicketsByUnit
 );
 
-router.get("/analytics/unidades/mttr-comparacion", verifyToken, checkRole(['administrador']), kpiController.getMTTRComparisonByUnit
+router.get("/analytics/unidades/mttr-comparacion", kpiController.getMTTRComparisonByUnit
 );
 
-router.get("/analytics/sla/mttr-prioridad", verifyToken, checkRole(['administrador']), kpiController.getMTTRByPriority
+router.get("/analytics/sla/mttr-prioridad", kpiController.getMTTRByPriority
 );
 
-router.get("/analytics/rendimiento/individual", verifyToken, checkRole(['administrador']), kpiController.getSupportFullPerformance
+router.get("/analytics/rendimiento/individual", kpiController.getSupportFullPerformance
 );
 
-router.get("/analytics/ubicaciones/treemap", verifyToken, checkRole(['administrador']), kpiController.getLocationTreemap
+router.get("/analytics/ubicaciones/treemap", kpiController.getLocationTreemap
 );
 
 // todo : bonus track
