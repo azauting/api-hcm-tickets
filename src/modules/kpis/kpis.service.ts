@@ -262,16 +262,17 @@ export const kpiService = {
     },
     getMTTRByMonth: async () => {
         const [rows] = await pool.query<RowDataPacket[]>(
-            `SELECT
+            `
+            SELECT
                 MONTHNAME(cerrado.fecha) AS mes,
                 ROUND(AVG(TIMESTAMPDIFF(HOUR, creado.fecha, cerrado.fecha)), 2) AS mttr_horas
             FROM ticket_movimiento creado
-            JOIN ticket_movimiento cerrado
-                ON creado.ticket_id = cerrado.ticket_id
+            JOIN ticket_movimiento cerrado ON creado.ticket_id = cerrado.ticket_id
             WHERE creado.movimiento_id = 1
-            AND cerrado.movimiento_id = 5
-            GROUP BY MONTH(cerrado.fecha)
-            ORDER BY MONTH(cerrado.fecha);`
+                AND cerrado.movimiento_id = 5
+            GROUP BY MONTH(cerrado.fecha), MONTHNAME(cerrado.fecha)
+            ORDER BY MONTH(cerrado.fecha);
+            `
         );
         return rows;
     },
