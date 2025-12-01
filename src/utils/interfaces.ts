@@ -171,6 +171,7 @@ export interface TicketCreateDTO {
     telefono?: string;
     autor_problema?: string;
     ubicacion_id?: number | null;
+    ip_manual?: string | null;  // si viene del usuario
     direccion_ip: string; // guardar IPv4/IPv6
     estado_de_revision: number;
     prioridad_id: number;

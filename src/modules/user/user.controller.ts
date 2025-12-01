@@ -52,24 +52,37 @@ export const userController = {
             return sendResponse(res, 500, 'Error interno del servidor');
         }
     },
-    getUsers: async (req: Request, res: Response) => {
+    getRequestingUsers: async (req: Request, res: Response) => {
         try {
-            log.info('Solicitando todos los usuarios');
-
-            const result = await userService.getAllUsers();
-
+            log.info('Solicitando usuarios con rol de solicitante');
+            const result = await userService.getRequestingUsers();
             if (result.status === 'empty') {
-                log.info('No se encontraron usuarios');
-                return sendResponse(res, 200, 'No se encontraron usuarios', []);
+                log.info('No se encontraron usuarios con rol de solicitante');
+                return sendResponse(res, 200, 'No se encontraron usuarios con rol de solicitante', []);
             }
-
             // result.status === 'ok'
             const { users } = result;
-            log.info({ count: users.length }, 'Usuarios obtenidos correctamente');
-            return sendResponse(res, 200, 'Usuarios obtenidos correctamente', users);
-
+            log.info({ count: users.length }, 'Usuarios con rol de solicitante obtenidos correctamente');
+            return sendResponse(res, 200, 'Usuarios con rol de solicitante obtenidos correctamente', users);
         } catch (error) {
-            log.error({ error }, 'Error interno al obtener usuarios');
+            log.error({ error }, 'Error interno al obtener usuarios con rol de solicitante');
+            return sendResponse(res, 500, 'Error interno del servidor');
+        }
+    },
+    getSupportUsers: async (req: Request, res: Response) => {
+        try {
+            log.info('Solicitando usuarios con rol de soporte');
+            const result = await userService.getSupportUsers();
+            if (result.status === 'empty') {
+                log.info('No se encontraron usuarios con rol de soporte');
+                return sendResponse(res, 200, 'No se encontraron usuarios con rol de soporte', []);
+            }
+            // result.status === 'ok'
+            const { users } = result;
+            log.info({ count: users.length }, 'Usuarios con rol de soporte obtenidos correctamente');
+            return sendResponse(res, 200, 'Usuarios con rol de soporte obtenidos correctamente', users);
+        } catch (error) {
+            log.error({ error }, 'Error interno al obtener usuarios con rol de soporte');
             return sendResponse(res, 500, 'Error interno del servidor');
         }
     },
@@ -94,91 +107,35 @@ export const userController = {
             return sendResponse(res, 500, 'Error interno del servidor');
         }
     },
-    updateUserRole: async (req: AuthRequest, res: Response) => {
+    updateUser: async (req: AuthRequest, res: Response) => {
         try {
-            log.info("Cambiando Rol")
             const userId = parseIdParam(req.params.id);
-            // obtenemos la id del admin desde req.user.usuario_id
-            const adminId = req.user!.id;
-            // verificamos si de verdad es un administrador
-            if (req.user!.nombre_rol !== 'administrador') {
-                log.warn({ adminId }, 'Intento no autorizado de cambio de rol de usuario');
-                return sendResponse(res, 403, 'No autorizado para cambiar roles de usuario');
-            }
-            // obtenemos el nuevo rol desde req.body.newRoleId
-            const { newRoleId } = req.body;
+            log.info({ userId }, 'Actualizando usuario');
 
-            log.info({ adminId, userId, newRoleId }, 'Solicitando cambio de rol de usuario');
+            // Campos opcionales
+            const { contrasena, id_rol, id_unidad, activo } = req.body;
 
-            const result = await userService.updateUserRole(newRoleId, userId, adminId,);
+            const result = await userService.updateUser(userId, {
+                contrasena,
+                id_rol,
+                id_unidad,
+                activo
+            });
+
             if (result.status === 'not_found') {
-                log.info({ userId }, 'Usuario no encontrado para cambio de rol');
                 return sendResponse(res, 404, 'Usuario no encontrado');
             }
 
-            // result.status === 'ok'
-            log.info({ userId, newRoleId }, 'Rol de usuario actualizado correctamente');
+            if (result.status === 'conflict') {
+                return sendResponse(res, 409, 'El correo ya está en uso');
+            }
 
-            return sendResponse(res, 200, 'Rol de usuario actualizado correctamente');
+            return sendResponse(res, 200, 'Usuario actualizado correctamente');
 
         } catch (error) {
-            log.error({ error }, 'Error interno al actualizar rol de usuario');
+            log.error({ error }, 'Error interno al actualizar usuario');
             return sendResponse(res, 500, 'Error interno del servidor');
         }
-    },
-    updateUserUnit: async (req: AuthRequest, res: Response) => {
-        try {
-            const userId = parseIdParam(req.params.id);
-            const adminId = req.user!.id;
-            if (req.user!.nombre_rol !== 'administrador') {
-                log.warn({ adminId }, 'Intento no autorizado de cambio de rol de usuario');
-                return sendResponse(res, 403, 'No autorizado para cambiar roles de usuario');
-            }
-            const { newUnitId } = req.body;
-            log.info({ adminId, userId, newUnitId }, 'Solicitando cambio de unidad de usuario');
-
-            const result = await userService.updateUserUnit(adminId, userId, newUnitId);
-            if (result.status === 'not_found') {
-                log.info({ userId }, 'Usuario no encontrado para cambio de unidad');
-                return sendResponse(res, 404, 'Usuario no encontrado');
-            }
-            // result.status === 'ok'   
-            log.info({ userId, newUnitId }, 'Unidad de usuario actualizada correctamente');
-
-            return sendResponse(res, 200, 'Unidad de usuario actualizada correctamente');
-
-        } catch (error) {
-            log.error({ error }, 'Error interno al actualizar unidad de usuario');
-
-            return sendResponse(res, 500, 'Error interno del servidor');
-        }
-    },
-    // Funciones futuras para actualizar contraseña pendiente arreglar
-    updateUserPassword: async (req: AuthRequest, res: Response) => {
-        try {
-            const userId = parseIdParam(req.params.id);
-            const adminId = req.user!.id;
-            const { newPassword } = req.body;
-            // verificamos el admin
-            if (req.user!.nombre_rol !== 'administrador') {
-                log.warn({ adminId }, 'Intento no autorizado de cambio de rol de usuario');
-                return sendResponse(res, 403, 'No autorizado para cambiar contraseña de usuario');
-            }
-            
-            log.info({ userId }, 'Solicitando cambio de contraseña de usuario');
-            const result = await userService.updateUserPassword(userId, newPassword, adminId);
-            if (result.status === 'not_found') {
-                log.info({ userId }, 'Usuario no encontrado para cambio de contraseña');
-                return sendResponse(res, 404, 'Usuario no encontrado');
-            }
-            // result.status === 'ok'          
-            log.info({ userId }, 'Contraseña de usuario actualizada correctamente');
-            return sendResponse(res, 200, 'Contraseña de usuario actualizada correctamente');
-
-        } catch (error) {
-            log.error({ error }, 'Error interno al actualizar contraseña de usuario');
-            return sendResponse(res, 500, 'Error interno del servidor');
-        };
     },
 };
 

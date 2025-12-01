@@ -16,8 +16,8 @@ export const ticketService = {
         try {
             const [result] = await pool.query<ResultSetHeader>(
                 `INSERT INTO ticket 
-                    (usuario_id_solicita, asunto, descripcion, telefono, autor_problema, ubicacion_id, direccion_ip, estado_de_revision, prioridad_id, unidad_id, estado_id, origen_id, evento_id) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    (usuario_id_solicita, asunto, descripcion, telefono, autor_problema, ubicacion_id, ip_manual, direccion_ip, estado_de_revision, prioridad_id, unidad_id, estado_id, origen_id, evento_id) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     ticketObjeto.usuario_id_solicita,
                     ticketObjeto.asunto,
@@ -25,6 +25,7 @@ export const ticketService = {
                     ticketObjeto.telefono,
                     ticketObjeto.autor_problema,
                     ticketObjeto.ubicacion_id,
+                    ticketObjeto.ip_manual,
                     ticketObjeto.direccion_ip,
                     ticketObjeto.estado_de_revision,
                     ticketObjeto.prioridad_id,
@@ -258,15 +259,22 @@ export const ticketService = {
                     t.telefono,
                     t.autor_problema,
                     t.direccion_ip,
+                    t.ip_manual,
                     t.estado_de_revision,
+                    -- obtener el correo del usuario_id_solicita
+                    (
+                        SELECT correo
+                        FROM usuario
+                        WHERE usuario_id = t.usuario_id_solicita
+                    ) AS correo,
                     
-                    -- valores de las tablas tipo (sin las *_id)
                     te.estado    AS estado,
                     tp.prioridad AS prioridad,
                     tu.unidad    AS unidad,
                     tor.origen   AS origen,
                     tev.evento   AS evento,
                     u.ubicacion  AS ubicacion,
+                    a.nombre_area AS area,
 
                     (
                         SELECT fecha 
@@ -283,6 +291,7 @@ export const ticketService = {
                 JOIN tipo_origen    tor ON t.origen_id   = tor.origen_id
                 JOIN tipo_evento    tev ON t.evento_id   = tev.evento_id
                 JOIN ubicacion      u  ON t.ubicacion_id = u.ubicacion_id
+                JOIN area          a  ON u.area_id      = a.area_id
                 WHERE t.ticket_id = ?;
                 `,
                 [ticketId]
@@ -539,6 +548,15 @@ export const ticketService = {
                 [soporte_asignado, ticket_id]
             );
 
+            // cambiamos el estado de ticket a "EN PROCESO" (estado_id = 2)
+            await pool.query<ResultSetHeader>(
+                `UPDATE ticket
+                SET estado_id = 2
+                WHERE ticket_id = ?`,
+                [ticket_id]
+            );
+
+
             if (update.affectedRows === 0) {
                 return { status: 'error', message: 'No se pudo asignar el ticket' };
             }
@@ -609,8 +627,7 @@ export const ticketService = {
     getUnreviewedTickets: async (): Promise<ApiResponse<Ticket>> => {
         log.info({ action: 'getUnreviewedTickets' }, 'Obteniendo tickets sin revisar');
         try {
-            // aca debemos mostrar la informacion del ticket donde estado_de_revision = 0, ademas con todos sus valores tipo con el valor de texto, por lo tanto hay que hacer joins con las tablas tipo_estado, tipo_prioridad, tipo_origen, tipo_evento, ubicacion, tipo_unidad
-            // ademas agregarle la fecha de creación desde ticket_movimiento
+
             const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
                 `SELECT 
                     t.ticket_id,
@@ -625,6 +642,7 @@ export const ticketService = {
                     t.telefono,
                     t.autor_problema,
                     t.direccion_ip,
+                    t.ip_manual,
                     t.estado_de_revision,
                     (
                         SELECT fecha
@@ -638,6 +656,7 @@ export const ticketService = {
                     tor.origen   AS origen,
                     tev.evento   AS evento,
                     u.ubicacion  AS ubicacion,
+                    a.nombre_area AS area,
                     tu.unidad    AS unidad
                 
 
@@ -647,6 +666,7 @@ export const ticketService = {
                 JOIN tipo_origen    tor ON t.origen_id   = tor.origen_id
                 JOIN tipo_evento    tev ON t.evento_id   = tev.evento_id
                 JOIN ubicacion      u  ON t.ubicacion_id = u.ubicacion_id
+                JOIN area          a  ON u.area_id      = a.area_id
                 JOIN tipo_unidad    tu ON t.unidad_id    = tu.unidad_id
                 WHERE t.estado_de_revision = 0
                 ORDER BY t.ticket_id DESC`
@@ -725,6 +745,7 @@ export const ticketService = {
                 WHERE 
                     t.unidad_id = ?
                     AND t.estado_de_revision = 1
+                    AND t.estado_id IN (1,2,3)  -- Excluir tickets cerrados y cancelados
 
                 ORDER BY t.ticket_id DESC;`,
                 [unidad_id]
@@ -743,146 +764,6 @@ export const ticketService = {
             log.error({ error, unidad_id }, 'Error al obtener tickets por unidad');
             return { status: 'error', message: 'Error al obtener tickets por unidad' };
         }
-    },
-    getAllStatusTypes: async (): Promise<ApiResponse<TipoEstado>> => {
-        log.info({ action: 'getAllTipoEstado' }, 'Obteniendo todos los tipos de estado');
-
-        try {
-            const [rows] = await pool.query(
-                `SELECT estado_id, estado FROM tipo_estado`
-            );
-
-            const estados = rows as TipoEstado[];
-
-            if (!estados.length) {
-                log.warn('No se encontraron tipos de estado');
-                return { status: 'empty' };
-            }
-
-            log.info('Tipos de estado obtenidos correctamente');
-            return { status: 'ok', data: estados };
-
-        } catch (error) {
-            log.error({ err: error }, 'Error al obtener los tipos de estado');
-            return { status: 'error', message: 'Error al obtener los tipos de estado' };
-        }
-    },
-    getAllPriorityTypes: async (): Promise<ApiResponse<TipoPrioridad>> => {
-        log.info({ action: 'getAllTipoPrioridad' }, 'Obteniendo todas las prioridades');
-
-        try {
-            const [rows] = await pool.query(`
-            SELECT prioridad_id, prioridad FROM tipo_prioridad; `);
-
-            const prioridades = rows as { prioridad_id: number; prioridad: string }[];
-
-            if (!prioridades.length) {
-                log.warn('No se encontraron prioridades registradas');
-                return { status: 'empty' };
-            }
-
-            log.info('Tipos de prioridad obtenidos correctamente');
-            return { status: 'ok', data: prioridades };
-        } catch (error) {
-            log.error({ err: error }, 'Error al obtener los tipos de prioridad');
-            return { status: 'error', message: 'Error al obtener los tipos de prioridad' };
-        }
-    },
-    getAllOriginTypes: async (): Promise<ApiResponse<TipoOrigen>> => {
-        log.info({ action: 'getAllTipoOrigen' }, 'Obteniendo todos los tipos de origen');
-
-        try {
-            const [rows] = await pool.query(
-                `SELECT origen_id, origen FROM tipo_origen`
-            );
-
-            const origen = rows as { origen_id: number; origen: string }[];
-
-            if (!origen.length) {
-                log.warn('No se encontraron tipos de origen');
-                return { status: 'empty' };
-            }
-
-            log.info('Tipos de origen obtenidos correctamente');
-            return { status: 'ok', data: origen };
-
-        } catch (error) {
-            log.error({ err: error }, 'Error al obtener los tipos de origen');
-            return { status: 'error', message: 'Error al obtener los tipos de origen' };
-        }
-    },
-    getAllEventTypes: async (): Promise<ApiResponse<TipoEvento>> => {
-        log.info({ action: 'GetAlltipoEvento' }, 'Obteniendo todos los tipos de evento');
-
-        try {
-            const [rows] = await pool.query(
-                'SELECT evento_id,evento FROM tipo_evento'
-            )
-
-            const eventos = rows as { evento_id: number; evento: string }[];
-
-            if (!eventos.length) {
-                log.warn('no se encontraron tipos de eventos')
-                return { status: 'empty' }
-            }
-
-            log.info('evento obtenido correctamente')
-            return { status: 'ok', data: eventos }
-
-        } catch (error) {
-            log.error({ err: error }, 'Error al obtener los tipos de evento');
-            return { status: 'error', message: 'Error al obtener los tipos de evento' };
-        }
-    },
-    getAllLocationTypes: async (): Promise<ApiResponse<Ubicacion>> => {
-        log.info([{ action: 'GetAllUbicacion' }], 'obteniendo todas las ubicaciones')
-
-
-        try {
-            const [rows] = await pool.query('SELECT ubicacion.ubicacion_id,ubicacion.ubicacion,ubicacion.area_id,area.nombre_area FROM ubicacion JOIN area ON ubicacion.area_id = area.area_id;')
-
-            const ubicaciones = rows as {
-                ubicacion_id: number;
-                ubicacion: string;
-                area_id: number;
-                nombre_area: string;
-            }[];
-
-
-            if (!ubicaciones.length) {
-                log.warn('no se encontraron ubicaciones')
-                return { status: 'empty' }
-            }
-
-            log.info('ubicaciones obtenidas correctamente')
-            return { status: 'ok', data: ubicaciones }
-
-        } catch (error) {
-            log.error({ err: error }, 'error al obtener las ubicaciones');
-            return { status: 'error', message: 'error al obtener todas las ubicaciones' }
-        }
-
-    },
-    getAllUnitTypes: async (): Promise<ApiResponse<TipoUnidad>> => {
-        log.info({ action: 'GetAllUnidad' }, 'obteniendo todos los tipos de unidad')
-
-        try {
-            const [rows] = await pool.query('SELECT unidad_id, unidad FROM tipo_unidad')
-
-            const unidades = rows as { unidad_id: number, unidad: string; }[];
-
-            if (!unidades.length) {
-                log.warn('no se encontraron las unidades')
-                return { status: 'empty' }
-            }
-            log.info('ubicaciones obtenidas correctamente')
-            return { status: 'ok', data: unidades };
-
-        } catch (error) {
-            log.error({ err: error }, 'error al obtener las unidades')
-            return { status: 'error', message: 'error al obtener todas las unidades' }
-        }
-
     },
     getInternaltickets: async (): Promise<ApiResponse<Ticket>> => {
         log.info({ action: "getInternaltickets" }, "Obteniendo todos los tickets internos");

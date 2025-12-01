@@ -49,6 +49,7 @@ export const ticketController = {
             telefono: ticketValidado.telefono,
             autor_problema: ticketValidado.autor_problema,
             ubicacion_id: ticketValidado.ubicacion_id,
+            ip_manual: ticketValidado.ip_manual ?? null,  // si viene del usuario
             direccion_ip: req.ip!,
             estado_de_revision: 0,
             prioridad_id: 1,
@@ -93,7 +94,6 @@ export const ticketController = {
             message: logResult.message
         });
     },
-    // TODO : cerrrar ticket solo admin/soporte - aqui debemos agregar la respuesta final y cambiar estado del ticket a 5
     closeTicket: async (req: AuthRequest, res: Response) => {
         log.info({ params: req.params, body: req.body }, 'Solicitud para cerrar ticket');
         const ticketId = parseIdParam(req.params.id);
@@ -139,7 +139,6 @@ export const ticketController = {
 
         return sendResponse(res, 200, 'Ticket cerrado correctamente');
     },
-
     updateTicketAdminReview: async (req: AuthRequest, res: Response) => {
         const ticketId = parseIdParam(req.params.id);
         const usuario_id = req.user!.id;
@@ -172,7 +171,7 @@ export const ticketController = {
             return sendResponse(res, 400, "ID de ticket inválido para actualización");
         }
         // verificamos que datos se van a actualizar porque debemos saber que campos para la auditoria
-        const allowedFields = ['estado_id', 'prioridad_id', 'unidad_id'];
+        const allowedFields = ['prioridad_id', 'unidad_id'];
         const fieldsToUpdate: Partial<typeof updateData> = {};
 
         for (const field of allowedFields) {
@@ -191,16 +190,10 @@ export const ticketController = {
         if (result.status === 'error') {
             return sendResponse(res, 500, "Error al actualizar el ticket");
         }
-        // Registrar los cambios en el log del ticket
-        // si cambia el estado el numero es 8
-        // si cambia la priodad el numero es 12
-        // si cambia la unidad el numero es 13
-        // por lo tanto puede haber multiples registros al mismo tiempo, se debe poder registrar mas de uno si que es que hubo cambios en varios campos actualizados
+        
         for (const field of Object.keys(fieldsToUpdate)) {
             let movimiento_id: number | null = null;
-            if (field === 'estado_id') {
-                movimiento_id = 8;
-            } else if (field === 'prioridad_id') {
+            if (field === 'prioridad_id') {
                 movimiento_id = 12;
             } else if (field === 'unidad_id') {
                 movimiento_id = 13;
@@ -216,7 +209,6 @@ export const ticketController = {
 
         return sendResponse(res, 200, "Ticket actualizado correctamente", { updatedFields: result.updatedFields });
     },
-
     assignTicket: async (req: AuthRequest, res: Response) => {
         const ticketId = parseIdParam(req.params.id);
         const usuario_id = req.user!.id;
@@ -225,7 +217,6 @@ export const ticketController = {
         if (ticketId === null) {
             return sendResponse(res, 400, "ID de ticket inválido para asignación");
         }
-
 
         let soporteAsignado: number;
 
@@ -250,11 +241,21 @@ export const ticketController = {
             return sendResponse(res, 500, result.message ?? 'Error al asignar ticket');
         }
         log.info({ ticketId, soporteAsignado, usuario_id }, 'Ticket asignado correctamente');
+        // primer movimineto es el de asignacion (id = 3)
         await ticketLogController.createTicketLog({
             ticket_id: ticketId,
             movimiento_id: 3,
             usuario_id
         });
+        // segundo movimiento de cambio de estado de ticket en proceso
+        await ticketLogController.createTicketLog({
+            ticket_id: ticketId,
+            movimiento_id: 8,
+            usuario_id
+        });
+        
+
+
         log.info({ ticketId }, 'Movimiento registrado de Ticket Asignacion')
 
         return sendResponse(res, 200, 'Ticket asignado correctamente', {
@@ -380,7 +381,6 @@ export const ticketController = {
             result.data[0]
         );
     },
-
     cancelTicket: async (req: AuthRequest, res: Response) => {
         const ticketId = parseIdParam(req.params.id);
         const userId = req.user!.id;
@@ -562,89 +562,6 @@ export const ticketController = {
             log.error({ error }, 'Error al obtener tickets por unidad');
             return sendResponse(res, 500, 'Error al obtener tickets por unidad');
         }
-    },
-    getStatusType: async (req: Request, res: Response) => {
-        const result = await ticketService.getAllStatusTypes();
-
-        if (result.status === 'empty') {
-            return sendResponse(res, 404, "no se encontraron tipos de estado registrados");
-        }
-
-        if (result.status === 'error') {
-            return sendResponse(res, 500, "error al obtener los tipos de estado");
-        }
-
-
-        return sendResponse(res, 200, "Tipos de estado obtenidos correctamente", { estados: result.data });
-    },
-    getPriorityType: async (req: Request, res: Response) => {
-
-        const result = await ticketService.getAllPriorityTypes();
-
-        if (result.status === 'empty') {
-            return sendResponse(res, 404, "no se encontraron tipos de prioridad")
-        }
-
-        if (result.status === 'error') {
-            return sendResponse(res, 500, "error al obtener los tipos de prioridad")
-        }
-
-        return sendResponse(res, 200, "tipos de prioridad obtenidos correctamente", { prioridades: result.data })
-    },
-    getOriginType: async (req: Request, res: Response) => {
-        const result = await ticketService.getAllOriginTypes();
-
-        if (result.status === 'empty') {
-            return sendResponse(res, 404, "no se encontraron tipos de origen")
-        }
-
-        if (result.status === 'error') {
-
-            return sendResponse(res, 500, "error al obtener los tipos de origen")
-
-        }
-        return sendResponse(res, 200, "tipos de origen obtenidos correctamente", { origen: result.data })
-    },
-    getEventType: async (req: Request, res: Response) => {
-        const result = await ticketService.getAllEventTypes();
-
-        if (result.status === 'empty') {
-            return sendResponse(res, 404, "no se encontraron tipos de eventos")
-        }
-
-        if (result.status === 'error') {
-            return sendResponse(res, 500, result.message)
-        }
-
-        return sendResponse(res, 200, "tipos de eventos obtenidos correctamente", { eventos: result.data });
-    },
-    getLocationType: async (req: Request, res: Response) => {
-        const result = await ticketService.getAllLocationTypes();
-
-        if (result.status === 'empty') {
-            return sendResponse(res, 404, "no se encontraron las ubicaciones")
-        }
-
-        if (result.status === 'error') {
-            return sendResponse(res, 500, result.message)
-        }
-
-        return sendResponse(res, 200, 'ubicaciones obtenidas correctamente', { ubicaciones: result.data });
-    },
-    getUnityType: async (req: Request, res: Response) => {
-        const result = await ticketService.getAllUnitTypes();
-
-        if (result.status === 'empty') {
-
-            return sendResponse(res, 404, "no se encontraron tipos de unidad")
-        }
-
-        if (result.status === 'error') {
-            return sendResponse(res, 500, result.message)
-        }
-
-
-        return sendResponse(res, 200, 'Tipos de unidad obtenidos correctamente', { unidades: result.data });
     },
     getTicketDetailsById: async (req: AuthRequest, res: Response) => {
         try {

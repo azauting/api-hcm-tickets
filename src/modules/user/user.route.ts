@@ -5,14 +5,20 @@ import { verifyToken } from '../../middlewares/verifyToken';
 
 
 const router = express.Router();
-
-router.get('/users', userController.getUsers)
-// en proceso de revision
+// obtener usuarios solicitantes
+router.get('/users/solicitantes', verifyToken, checkRole(['administrador']), userController.getRequestingUsers);
+// obtener usuarios soportes
+router.get('/users/soportes', verifyToken, checkRole(['administrador']), userController.getSupportUsers);
+// crear usuario
 router.post('/users', verifyToken, checkRole(['administrador']), userController.createUser);
+// obtener usuario por id
 router.get('/users/:id', userController.getUserById); 
-router.patch('/users/:id/update-password', verifyToken, checkRole(['administrador']), userController.updateUserPassword);
-router.get('/user/soportes-disponibles', verifyToken, checkRole(['administrador', 'soporte']), userController.getAvailableSupports);
-router.patch('/users/:id/update-role', verifyToken, checkRole(['administrador']), userController.updateUserRole);
-router.patch('/users/:id/update-unit', verifyToken, checkRole(['administrador']), userController.updateUserUnit);
+// obtener soportes disponibles para asignar tickets
+router.get('/user/soportes/disponibles', verifyToken, checkRole(['administrador', 'soporte']), userController.getAvailableSupports); 
+
+// actualizar al usuario
+router.patch('/users/:id', verifyToken, checkRole(['administrador']), userController.updateUser);
+
+
 
 export default router;

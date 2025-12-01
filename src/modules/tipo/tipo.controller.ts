@@ -96,7 +96,7 @@ export const tipoController = {
             log.info('Actualizando area');
             const areaId = parseIdParam(req.params.id);
             const { nombre_area } = req.body;
-            const result = await tipoService.updateoArea(areaId, nombre_area);
+            const result = await tipoService.updateArea(areaId, nombre_area);
             if (result.status === 'not_found') {
                 log.info({ areaId }, 'Area no encontrada');
                 return sendResponse(res, 404, 'Area no encontrada');

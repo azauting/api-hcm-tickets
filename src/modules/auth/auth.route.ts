@@ -11,7 +11,7 @@ const router = express.Router();
 router.post('/login', login);
 
 // Obtener información del usuario autenticado
-router.get('/me', verifyToken, (req: AuthRequest, res: Response) => {
+router.get('/auth/me', verifyToken, (req: AuthRequest, res: Response) => {
     if (!req.user) {
         return sendResponse(res, 401, 'No autenticado');
     }

@@ -17,7 +17,7 @@ export const tipoService = {
                 log.warn({ evento }, 'El tipo de evento ya existe');
                 return { status: 'conflict' };
             }
-            
+
             const [result] = await pool.query<RowDataPacket[]>(
                 `
                 INSERT INTO tipo_evento (evento)
@@ -25,7 +25,7 @@ export const tipoService = {
                 `,
                 [evento]
             );
-            
+
             const newTipoEventoId = (result as any).insertId;
             log.info({ newTipoEventoId, evento }, 'Tipo de evento creado correctamente');
             return { status: 'ok', newTipoEventoId };
@@ -53,7 +53,7 @@ export const tipoService = {
                 `,
                 [nombre_area]
             );
-            
+
             const newAreaId = (result as any).insertId;
             log.info({ newAreaId, nombre_area }, 'area creado correctamente');
             return { status: 'ok', newAreaId };
@@ -81,7 +81,7 @@ export const tipoService = {
                 `,
                 [ubicacion, area_id]
             );
-            
+
             const newUbicacionId = (result as any).insertId;
             log.info({ newUbicacionId, ubicacion }, 'Ubicacion creada correctamente');
             return { status: 'ok', newUbicacionId };
@@ -252,8 +252,13 @@ export const tipoService = {
         try {
             const [rows] = await pool.query<RowDataPacket[]>(
                 `
-                SELECT ubicacion_id, ubicacion, area_id
-                FROM ubicacion
+                SELECT 
+                    u.ubicacion_id,
+                    u.ubicacion,
+                    u.area_id,
+                    a.nombre_area
+                FROM ubicacion u
+                LEFT JOIN area a ON a.area_id = u.area_id
                 `
             );
             if (rows.length === 0) {
@@ -263,7 +268,8 @@ export const tipoService = {
             const ubicaciones = rows.map(row => ({
                 ubicacion_id: row.ubicacion_id,
                 ubicacion: row.ubicacion,
-                area_id: row.area_id
+                area_id: row.area_id,
+                nombre_area: row.nombre_area
             }));
             log.info({ count: ubicaciones.length }, 'Ubicaciones obtenidas correctamente');
             return { status: 'ok', ubicaciones };
