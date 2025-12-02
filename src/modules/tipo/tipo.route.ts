@@ -1,42 +1,54 @@
-import express from 'express'
+import express from 'express';
 import { tipoController } from './tipo.controller';
 import { checkRole } from '../../middlewares/checkRole';
 import { verifyToken } from '../../middlewares/verifyToken';
 
 const router = express.Router();
 
-// crear tipo_evento
-router.post('/tipos/evento', verifyToken, checkRole(['administrador']), tipoController.createTipoEvento);
+// Create event type
+router.post('/tipos/evento', verifyToken, checkRole(['administrador']), tipoController.createEventType);
 
-// crear area
-router.post('/tipos/area', verifyToken, checkRole(['administrador']), tipoController.createTipoArea);
+// Create area
+router.post('/tipos/area', verifyToken, checkRole(['administrador']), tipoController.createArea);
 
-// crear ubicacion
-// a; crear una ubiacion se le debe asignar un area existente
-router.post('/tipos/ubicacion', verifyToken, checkRole(['administrador']), tipoController.createUbicacion);
+// Create location (ubicación)
+// When creating a location, it must be assigned to an existing area
+router.post('/tipos/ubicacion', verifyToken, checkRole(['administrador']), tipoController.createLocation);
 
+// Get all event types
+router.get('/tipos/evento', tipoController.getEventTypes);
 
-// obtener todos los tipos de evento
-router.get('/tipos/evento', tipoController.getTipoEvento);
+router.get('/tipos/evento/:id', tipoController.getEventTypeById);
 
-router.get('tipos/evento/:id', tipoController.getTipoEventoById);
-
-// obtener todos los tipos de area
+// Get all areas
 router.get('/tipos/area', tipoController.getAreas);
 
 router.get('/tipos/area/:id', tipoController.getAreaById);
-// obtener todos los tipos de ubicacion
-router.get('/tipos/ubicacion', tipoController.getUbicaciones);
 
-router.get('/tipos/ubicacion/:id', tipoController.getUbicacionById);
+// Get all locations
+router.get('/tipos/ubicacion', tipoController.getLocations);
 
-// actualizar tipo evento
-router.patch('/tipos/evento/:id', verifyToken, checkRole(['administrador']), tipoController.updateTipoEvento);
+router.get('/tipos/ubicacion/:id', tipoController.getLocationById);
 
-// actualizar tipo area
+// Update event type
+router.patch('/tipos/evento/:id', verifyToken, checkRole(['administrador']), tipoController.updateEventType);
+
+// Update area
 router.patch('/tipos/area/:id', verifyToken, checkRole(['administrador']), tipoController.updateArea);
 
-// actualizar tipo ubicacion
-router.patch('/tipos/ubicacion/:id', verifyToken, checkRole(['administrador']), tipoController.updateUbicacion);
+// Update location
+router.patch('/tipos/ubicacion/:id', verifyToken, checkRole(['administrador']), tipoController.updateLocation);
+
+// Get unidad types
+router.get('/tipos/unidad', verifyToken, checkRole(['administrador']), tipoController.getUnitTypes);
+
+// Get estado types
+router.get('/tipos/estado', verifyToken, checkRole(['administrador']), tipoController.getStatusTypes);
+
+// Get prioridad types
+router.get('/tipos/prioridad', verifyToken, checkRole(['administrador']), tipoController.getPriorityTypes);
+
+// Get origen types
+router.get('/tipos/origen', verifyToken, checkRole(['administrador']), tipoController.getOriginTypes);
 
 export default router;

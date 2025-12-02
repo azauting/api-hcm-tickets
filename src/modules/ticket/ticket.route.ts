@@ -51,6 +51,8 @@ router.get('/tickets/sin-revisar', verifyToken, checkRole(['administrador']), ti
 // TODO: ruta para ver mis tickets creados - estado: ✅
 router.get('/tickets/mis-tickets', verifyToken, ticketController.getTicketsByUserId);
 
+//  TODO: ruta para ver los tickets cerrados
+router.get('/tickets/cerrados', verifyToken, checkRole(['administrador']), ticketController.getClosedTickets);
 // TODO: ruta para ver los tickets por unidad - estado: ✅
 router.get('/tickets/revisados', verifyToken, checkRole(['administrador', 'soporte']), ticketController.getTicketsByUnit);
 

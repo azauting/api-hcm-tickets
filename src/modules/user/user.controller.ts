@@ -86,39 +86,18 @@ export const userController = {
             return sendResponse(res, 500, 'Error interno del servidor');
         }
     },
-    getAvailableSupports: async (req: Request, res: Response) => {
-        try {
-            log.info('Solicitando soportes disponibles para asignar tickets');
-
-            const result = await userService.getAvailableSupports();
-
-            if (result.status === 'empty') {
-                log.info('No se encontraron soportes disponibles');
-                return sendResponse(res, 200, 'No se encontraron soportes disponibles', []);
-            }
-
-            // result.status === 'ok'
-            const { supports } = result;
-            log.info({ count: supports.length }, 'Soportes disponibles obtenidos correctamente');
-            return sendResponse(res, 200, 'Soportes disponibles obtenidos correctamente', supports);
-
-        } catch (error) {
-            log.error({ error }, 'Error interno al obtener soportes disponibles');
-            return sendResponse(res, 500, 'Error interno del servidor');
-        }
-    },
     updateUser: async (req: AuthRequest, res: Response) => {
         try {
             const userId = parseIdParam(req.params.id);
             log.info({ userId }, 'Actualizando usuario');
 
             // Campos opcionales
-            const { contrasena, id_rol, id_unidad, activo } = req.body;
+            const { contrasena, rol_id, unidad_id, activo } = req.body;
 
             const result = await userService.updateUser(userId, {
                 contrasena,
-                id_rol,
-                id_unidad,
+                rol_id,
+                unidad_id,
                 activo
             });
 

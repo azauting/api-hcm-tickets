@@ -136,46 +136,6 @@ export const userService = {
             throw error;
         }
     },
-    /* GetAvailableSupports - Obtener soportes disponibles para asignar tickets */
-    async getAvailableSupports(): Promise<GetAllSupportsResult> {
-        log.info({ action: 'getAvailableSupports' }, 'Obteniendo soportes disponibles para asignar tickets');
-        try {
-            const [rows] = await pool.query<(User & RowDataPacket)[]>(
-                `
-                SELECT 
-                    u.usuario_id,
-                u.nombre_completo,
-                u.correo,
-                u.rol_id,
-                u.unidad_id,
-                un.unidad AS nombre_unidad
-                FROM usuario u
-                JOIN tipo_rol tr 
-                    ON tr.rol_id = u.rol_id
-                LEFT JOIN tipo_unidad un 
-                    ON u.unidad_id = un.unidad_id
-                WHERE tr.nombre_rol = 'soporte'
-                    AND NOT EXISTS(
-                    SELECT 1
-                        FROM ticket_detalle td
-                        JOIN ticket t       ON t.ticket_id = td.ticket_id
-                        JOIN tipo_estado te ON te.estado_id = t.estado_id
-                        WHERE td.soporte_asignado = u.usuario_id
-                        AND te.estado = 'en proceso'
-                );`
-            );
-            if (rows.length === 0) {
-                log.warn('No se encontraron soportes disponibles');
-                return { status: 'empty' };
-            }
-
-            log.info({ count: rows.length }, 'Soportes disponibles obtenidos correctamente');
-            return { status: 'ok', supports: rows };
-        } catch (error) {
-            log.error({ error }, 'Error al obtener soportes disponibles');
-            throw error;
-        }
-    },
     updateUser: async (userId: number, data: any) => {
         log.info({ action: 'updateUser', userId, data });
 
@@ -193,12 +153,12 @@ export const userService = {
             // 2. Construir dinámicamente los campos a actualizar
             const fieldsToUpdate: any = {};
 
-            if (data.id_rol !== undefined) {
-                fieldsToUpdate.rol_id = data.id_rol;
+            if (data.rol_id !== undefined) {
+                fieldsToUpdate.rol_id = data.rol_id;
             }
 
-            if (data.id_unidad !== undefined) {
-                fieldsToUpdate.unidad_id = data.id_unidad;
+            if (data.unidad_id !== undefined) {
+                fieldsToUpdate.unidad_id = data.unidad_id;
             }
 
             if (data.activo !== undefined) {

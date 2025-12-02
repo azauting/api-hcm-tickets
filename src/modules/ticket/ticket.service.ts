@@ -968,4 +968,48 @@ export const ticketService = {
             return { status: "error", message: "Error al obtener integrantes" };
         }
     },
+    getClosedTickets: async (): Promise<ApiResponse<Ticket>> => {
+        log.info({ action: 'getClosedTickets' }, 'Obteniendo tickets cerrados');
+        try {
+            const [rows] = await pool.query<Ticket[] & RowDataPacket[]>(
+                `SELECT
+                    t.ticket_id,
+                    (
+                        SELECT nombre_completo
+                        FROM usuario
+                        WHERE usuario_id = t.usuario_id_solicita
+                    ) AS usuario_nombre,
+                    t.asunto,
+                    t.autor_problema,
+                    (
+                        SELECT fecha
+                        FROM ticket_movimiento tm
+                        WHERE tm.ticket_id = t.ticket_id
+                        ORDER BY fecha ASC
+                        LIMIT 1
+                    ) AS fecha_creacion,
+
+                    tor.origen   AS origen,
+                    tev.evento   AS evento,
+                    tu.unidad    AS unidad
+                FROM ticket t
+                JOIN tipo_origen    tor ON t.origen_id   = tor.origen_id
+                JOIN tipo_evento    tev ON t.evento_id   = tev.evento_id
+                JOIN tipo_unidad    tu ON t.unidad_id    = tu.unidad_id
+                WHERE t.estado_id = 5
+                ORDER BY fecha_creacion DESC;`
+            )
+
+            const tickets = rows as Ticket[];
+            if (!tickets.length) {
+                log.warn('No se encontraron tickets cerrados');
+                return { status: 'empty' };
+            }
+            log.info('Tickets cerrados obtenidos correctamente');
+            return { status: 'ok', data: tickets };
+        } catch (error) {
+            log.error({ error }, 'Error al obtener tickets cerrados');
+            return { status: 'error', message: 'Error al obtener tickets cerrados' };
+        }
+    }
 }

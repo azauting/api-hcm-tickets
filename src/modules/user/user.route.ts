@@ -14,7 +14,6 @@ router.post('/users', verifyToken, checkRole(['administrador']), userController.
 // obtener usuario por id
 router.get('/users/:id', userController.getUserById); 
 // obtener soportes disponibles para asignar tickets
-router.get('/user/soportes/disponibles', verifyToken, checkRole(['administrador', 'soporte']), userController.getAvailableSupports); 
 
 // actualizar al usuario
 router.patch('/users/:id', verifyToken, checkRole(['administrador']), userController.updateUser);

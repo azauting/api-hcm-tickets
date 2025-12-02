@@ -630,7 +630,17 @@ export const ticketController = {
             return sendResponse(res, 500, "Error al obtener los integrantes del ticket");
         }
     },
-
+    getClosedTickets: async (req: AuthRequest, res: Response) => {
+        log.info('Obteniendo tickets cerrados');
+        const result = await ticketService.getClosedTickets();
+        if (result.status === 'empty') {
+            return sendResponse(res, 404, 'No se encontraron tickets cerrados');
+        }
+        if (result.status === 'error') {
+            return sendResponse(res, 500, result.message);
+        }
+        return sendResponse(res, 200, 'Tickets cerrados obtenidos correctamente', { tickets: result.data });
+    },
 }
 
 
