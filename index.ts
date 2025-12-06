@@ -65,7 +65,7 @@ app.use(cors({
 app.use(express.json());
 
 // Descomentar solo si es necesario (NO en cada arranque)
-/* 
+
 const hashPasswords = async () => {
     const [result] = await db.query('SELECT usuario_id, contrasena FROM usuario');
     const users = result as { usuario_id: number; contrasena: string; }[];
@@ -78,7 +78,7 @@ const hashPasswords = async () => {
         console.log(`Contraseña del usuario ${user.usuario_id} hasheada y actualizada.`);
     }
 };
-*/
+
 
 // rutas
 app.get('/', (req, res) => res.send('api-hospital-v1 funcionando correctamente'));
@@ -97,7 +97,7 @@ const startServer = async () => {
         conn.release();
         console.log('Conexión a la base de datos exitosa.');
 
-        // await hashPasswords();
+        await hashPasswords();
         app.listen(port, () => {
             console.log(`Servidor corriendo en :${port}`);
             console.log(`CORS allowed origin: ${allowedOrigins.join(', ')}`);
