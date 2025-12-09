@@ -6,44 +6,21 @@ import { checkRole } from '../../middlewares/checkRole';
 const router = express.Router();
 
 
-//* Primera vista - general
 router.get('/analytics/tickets-creados-hoy',verifyToken, checkRole(['administrador']), kpiController.getTicketsCreatedToday);
 router.get('/analytics/tickets-cerrados-hoy',verifyToken, checkRole(['administrador']),  kpiController.getTicketsClosedToday);
-router.get('/analytics/tickets-abiertos',verifyToken, checkRole(['administrador']), kpiController.getOpenTickets);// este esta mal porque cuenta los cerrados tambien, debe contar los ticket con estado abierto nada mas o estado_revision = true
+router.get('/analytics/tickets-abiertos',verifyToken, checkRole(['administrador']), kpiController.getOpenTickets);
 router.get('/analytics/tickets-en-proceso',verifyToken, checkRole(['administrador']), kpiController.getTicketsInProgress);
 router.get("/analytics/resueltos-mes",verifyToken, checkRole(['administrador']), kpiController.getResolvedTicketsByMonth);
 router.get("/analytics/mttr-mensual",verifyToken, checkRole(['administrador']), kpiController.getMTTRByMonth);
 router.get("/analytics/ubicaciones/treemap",verifyToken, checkRole(['administrador']), kpiController.getLocationTreemap);
-// funcionan bien hasta aqui
+router.get("/analytics/sla-prioridades",verifyToken, checkRole(['administrador']), kpiController.getSLAByPriority);
+// HASTA AQUI PRIMERA VISTA GENERAL
 
+router.get('/analytics/unidades/mes', verifyToken, checkRole(['administrador']), kpiController.getUnidadesMes);
+router.get('/analytics/unidades/anual', verifyToken, checkRole(['administrador']), kpiController.getUnidadesAnual);
+router.get('/analytics/years', verifyToken, checkRole(['administrador']), kpiController.getAvailableYears);
 
-
-//* vista por unidades
-// todo: KPIS POR UNIDAD
-router.get('/analytics/unidades/creados-hoy',verifyToken, checkRole(['administrador']), kpiController.getTicketsCreatedTodayByUnit);
-router.get('/analytics/unidades/mes',verifyToken, checkRole(['administrador']), kpiController.getTicketsThisMonthByUnit);
-router.get('/analytics/unidades/mttr',verifyToken, checkRole(['administrador']), kpiController.getMTTRByUnit);
-router.get('/analytics/unidades/cerrados',verifyToken, checkRole(['administrador']), kpiController.getClosedTicketsByUnit);
-router.get('/analytics/unidades/abiertos',verifyToken, checkRole(['administrador']), kpiController.getOpenTicketsByUnit);
-router.get('/analytics/unidades/en-proceso',verifyToken, checkRole(['administrador']), kpiController.getTicketsInProgressByUnit);
-router.get("/analytics/unidades/consolidado",verifyToken, checkRole(['administrador']), kpiController.getUnitConsolidatedStats);
-router.get('/analytics/unidades/resueltos-mensual',verifyToken, checkRole(['administrador']), kpiController.getMonthlyResolvedTicketsByUnit);
-router.get("/analytics/unidades/mttr-comparacion",verifyToken, checkRole(['administrador']), kpiController.getMTTRComparisonByUnit);
-// todo : RENDIMIENTO DEL SOPORTE
-router.get('/analytics/soporte/rendimiento',verifyToken, checkRole(['administrador']), kpiController.getSupportPerformance);
-// todo: SERIES DE TIEMPO (HISTÓRICO)
-router.get('/analytics/tiempo/dia',verifyToken, checkRole(['administrador']), kpiController.getTicketsByDay);
-router.get('/analytics/tiempo/semana',verifyToken, checkRole(['administrador']), kpiController.getTicketsByWeek);
-router.get('/analytics/tiempo/mes',verifyToken, checkRole(['administrador']), kpiController.getTicketsByMonth);
-
-// ! este endpoint va a recibir un año
-router.get('/analytics/tiempo/anio',verifyToken, checkRole(['administrador']), kpiController.getTicketsByYear);
-router.get("/analytics/sla/mttr-prioridad",verifyToken, checkRole(['administrador']), kpiController.getMTTRByPriority);
-router.get("/analytics/rendimiento/individual",verifyToken, checkRole(['administrador']), kpiController.getSupportFullPerformance);
-
-
-
-// todo : bonus track
-// !en ver detalle de un ticket cuando el ticket se cierra, que aparezca el tiempo de resolucion del ticket
+// HASTA AQUI VISTA POR UNIDAD
+router.get('/analytics/rendimiento-por-unidad', verifyToken, checkRole(['administrador']), kpiController.getRendimientoEquipo);
 
 export default router;

@@ -5,9 +5,7 @@ import { calculateJwkThumbprint } from 'jose';
 
 
 export const kpiService = {
-
-    // todo : KPIS POR DIA
-
+    // vista general
     getTicketCreatedToday: async (): Promise<number> => {
         const query = `
             SELECT COUNT(*) AS total
@@ -18,7 +16,6 @@ export const kpiService = {
         const [rows] = await pool.query<RowDataPacket[]>(query);
         return rows[0]?.total || 0;
     },
-
     getTicketsClosedToday: async (): Promise<number> => {
         const query = `
             SELECT COUNT(*) AS total
@@ -29,21 +26,15 @@ export const kpiService = {
         const [rows] = await pool.query<RowDataPacket[]>(query);
         return rows[0]?.total || 0;
     },
-
     getOpenTickets: async (): Promise<number> => {
         const query = `
             SELECT COUNT(*) AS total
-            FROM ticket t
-            WHERE NOT EXISTS (
-                SELECT 1 FROM ticket_movimiento m
-                WHERE m.ticket_id = t.ticket_id
-                AND m.movimiento_id = 5
-            );
+            FROM ticket
+            WHERE estado_id = 1;
         `;
         const [rows] = await pool.query<RowDataPacket[]>(query);
         return rows[0]?.total || 0;
     },
-
     getTicketsInProgress: async (): Promise<number> => {
         const query = `
             SELECT COUNT(*) AS total
@@ -57,355 +48,6 @@ export const kpiService = {
         `;
         const [rows] = await pool.query<RowDataPacket[]>(query);
         return rows[0]?.total || 0;
-    },
-
-    // todo: KPI POR UNIDAD 
-
-    getTicketsCreatedTodayByUnit: async () => {
-        const query = `
-            SELECT tu.unidad, COUNT(*) AS creados_hoy
-            FROM ticket t
-            JOIN tipo_unidad tu ON tu.unidad_id = t.unidad_id
-            JOIN ticket_movimiento m ON m.ticket_id = t.ticket_id
-            WHERE m.movimiento_id = 1
-            AND DATE(m.fecha) = CURDATE()
-            GROUP BY tu.unidad;
-        `;
-        const [rows] = await pool.query<RowDataPacket[]>(query);
-        return rows;
-    },
-
-    getTicketsThisMonthByUnit: async () => {
-        const query = `
-            SELECT tu.unidad, COUNT(*) AS total_mes
-            FROM ticket t
-            JOIN tipo_unidad tu ON tu.unidad_id = t.unidad_id
-            JOIN ticket_movimiento m ON m.ticket_id = t.ticket_id
-            WHERE m.movimiento_id = 1
-            AND MONTH(m.fecha) = MONTH(CURDATE())
-            GROUP BY tu.unidad;
-        `;
-        const [rows] = await pool.query<RowDataPacket[]>(query);
-        return rows;
-    },
-
-    getMTTRByUnit: async () => {
-        const query = `
-            SELECT 
-                tu.unidad,
-                ROUND(AVG(TIMESTAMPDIFF(HOUR, creado.fecha, cerrado.fecha)), 2) AS mttr_horas
-            FROM ticket t
-            JOIN tipo_unidad tu ON tu.unidad_id = t.unidad_id
-            JOIN ticket_movimiento creado ON creado.ticket_id = t.ticket_id AND creado.movimiento_id = 1
-            JOIN ticket_movimiento cerrado ON cerrado.ticket_id = t.ticket_id AND cerrado.movimiento_id = 5
-            GROUP BY tu.unidad;
-        `;
-        const [rows] = await pool.query<RowDataPacket[]>(query);
-        return rows;
-    },
-
-    getClosedTicketsByUnit: async () => {
-        const query = `
-            SELECT tu.unidad, COUNT(*) AS cerrados
-            FROM ticket t
-            JOIN tipo_unidad tu ON tu.unidad_id = t.unidad_id
-            JOIN ticket_movimiento m ON m.ticket_id = t.ticket_id
-            WHERE m.movimiento_id = 5
-            GROUP BY tu.unidad;
-        `;
-        const [rows] = await pool.query<RowDataPacket[]>(query);
-        return rows;
-    },
-
-    getOpenTicketsByUnit: async () => {
-        const query = `
-            SELECT tu.unidad, COUNT(*) AS abiertos
-            FROM ticket t
-            JOIN tipo_unidad tu ON tu.unidad_id = t.unidad_id
-            WHERE NOT EXISTS (
-                SELECT 1 FROM ticket_movimiento m
-                WHERE m.ticket_id = t.ticket_id AND m.movimiento_id = 5
-            )
-            GROUP BY tu.unidad;
-        `;
-        const [rows] = await pool.query<RowDataPacket[]>(query);
-        return rows;
-    },
-
-    getTicketsInProgressByUnit: async () => {
-        const query = `
-            SELECT tu.unidad, COUNT(*) AS en_proceso
-            FROM ticket t
-            JOIN tipo_unidad tu ON tu.unidad_id = t.unidad_id
-            WHERE t.ticket_id IN (
-                SELECT ticket_id FROM ticket_movimiento WHERE movimiento_id = 3
-            )
-            AND t.ticket_id NOT IN (
-                SELECT ticket_id FROM ticket_movimiento WHERE movimiento_id = 5
-            )
-            GROUP BY tu.unidad;
-        `;
-        const [rows] = await pool.query<RowDataPacket[]>(query);
-        return rows;
-    },
-
-    // todo : RENDIMIENTO SOPORTE
-
-    getSupportPerformance: async () => {
-        const query = `
-            SELECT 
-                u.usuario_id,
-                u.nombre_completo AS soporte,
-                COUNT(*) AS tickets_resueltos
-            FROM ticket_movimiento m
-            JOIN usuario u ON u.usuario_id = m.usuario_id
-            WHERE m.movimiento_id = 5
-            AND u.rol_id = 2
-            GROUP BY u.usuario_id
-            ORDER BY tickets_resueltos DESC;
-        `;
-        const [rows] = await pool.query<RowDataPacket[]>(query);
-        return rows;
-    },
-    getTicketsByDay: async () => {
-        const query = `
-            SELECT 
-                DATE(m.fecha) AS fecha,
-                COUNT(*) AS total_tickets
-            FROM ticket_movimiento m
-            WHERE m.movimiento_id = 1
-            GROUP BY DATE(m.fecha)
-            ORDER BY fecha;
-        `;
-        const [rows] = await pool.query<RowDataPacket[]>(query);
-        return rows;
-    },
-
-    getTicketsByWeek: async () => {
-        const query = `
-            SELECT
-                YEAR(m.fecha) AS year,
-                WEEK(m.fecha, 1) AS week,
-                COUNT(*) AS total_tickets
-            FROM ticket_movimiento m
-            WHERE m.movimiento_id = 1
-            GROUP BY year, week
-            ORDER BY year, week;
-        `;
-        const [rows] = await pool.query<RowDataPacket[]>(query);
-        return rows;
-    },
-
-    getTicketsByMonth: async () => {
-        const query = `
-            SELECT
-                YEAR(m.fecha) AS year,
-                MONTH(m.fecha) AS month,
-                COUNT(*) AS total_tickets
-            FROM ticket_movimiento m
-            WHERE m.movimiento_id = 1
-            GROUP BY year, month
-            ORDER BY year, month;
-        `;
-        const [rows] = await pool.query<RowDataPacket[]>(query);
-        return rows;
-    },
-
-    getTicketsByYear: async () => {
-        const query = `
-            SELECT
-                YEAR(m.fecha) AS year,
-                COUNT(*) AS total_tickets
-            FROM ticket_movimiento m
-            WHERE m.movimiento_id = 1
-            GROUP BY year
-            ORDER BY year;
-        `;
-        const [rows] = await pool.query<RowDataPacket[]>(query);
-        return rows;
-    },
-
-    // todo : MTTR (TIEMPO MEDIO DE RESOLUCION)
-
-    getMTTR: async () => {
-        const query = `
-            SELECT 
-                    AVG(TIMESTAMPDIFF(HOUR, t_crea.fecha_creacion, t_cierra.fecha_cierre)) AS MTTR_horas
-                FROM 
-                    (SELECT ticket_id, MIN(fecha) AS fecha_creacion
-                    FROM ticket_movimiento
-                    GROUP BY ticket_id) AS t_crea
-                JOIN 
-                    (SELECT ticket_id, fecha AS fecha_cierre
-                    FROM ticket_movimiento
-                    WHERE movimiento_id = 5) AS t_cierra
-                ON t_crea.ticket_id = t_cierra.ticket_id;
-            `;
-        const [rows] = await pool.query<RowDataPacket[]>(query);
-        return rows[0] || { MTTR_horas: 0 };
-    },
-
-
-    // TODO : KPIS AGUS
-    getResolvedTicketsByMonth: async () => {
-        const [rows] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                MONTHNAME(m.fecha) AS mes,
-                COUNT(*) AS resueltos
-            FROM ticket_movimiento m
-            WHERE m.movimiento_id = 5
-            AND YEAR(m.fecha) = YEAR(CURDATE()) -- IMPORTANTE: Solo año actual
-            GROUP BY MONTH(m.fecha), MONTHNAME(m.fecha) -- Agrupamos por ambos para evitar error estricto
-            ORDER BY MONTH(m.fecha);`
-        );
-        return rows;
-    },
-    getMTTRByMonth: async () => {
-        const [rows] = await pool.query<RowDataPacket[]>(
-            `
-            SELECT
-                MONTHNAME(cerrado.fecha) AS mes,
-                ROUND(AVG(TIMESTAMPDIFF(HOUR, creado.fecha, cerrado.fecha)), 2) AS mttr_horas
-            FROM ticket_movimiento creado
-            JOIN ticket_movimiento cerrado ON creado.ticket_id = cerrado.ticket_id
-            WHERE creado.movimiento_id = 1
-                AND cerrado.movimiento_id = 5
-            GROUP BY MONTH(cerrado.fecha), MONTHNAME(cerrado.fecha)
-            ORDER BY MONTH(cerrado.fecha);
-            `
-        );
-        return rows;
-    },
-    getUnitConsolidatedStats: async () => {
-        const [rows] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                tu.unidad,
-                SUM(CASE WHEN t.estado_id != 5 THEN 1 ELSE 0 END) AS pendientes,
-                SUM(CASE WHEN EXISTS (
-                        SELECT 1 FROM ticket_movimiento m 
-                        WHERE m.ticket_id = t.ticket_id 
-                        AND m.movimiento_id = 3
-                    ) THEN 1 ELSE 0 END) AS en_proceso,
-                SUM(CASE WHEN EXISTS (
-                        SELECT 1 FROM ticket_movimiento m 
-                        WHERE m.ticket_id = t.ticket_id 
-                        AND m.movimiento_id = 5
-                    ) THEN 1 ELSE 0 END) AS cerrados,
-                (
-                    SELECT ROUND(AVG(TIMESTAMPDIFF(HOUR, creado.fecha, cerrado.fecha)), 2)
-                    FROM ticket_movimiento creado
-                    JOIN ticket_movimiento cerrado
-                        ON creado.ticket_id = cerrado.ticket_id
-                    WHERE creado.movimiento_id = 1
-                    AND cerrado.movimiento_id = 5
-                    AND t.unidad_id = tu.unidad_id
-                ) AS mttr_horas
-            FROM ticket t
-            JOIN tipo_unidad tu ON tu.unidad_id = t.unidad_id
-            GROUP BY tu.unidad_id
-            ORDER BY tu.unidad;`
-        );
-        return rows;
-    },
-    getMonthlyResolvedTicketsByUnit: async () => {
-        const [rows] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                MONTHNAME(m.fecha) AS mes,
-                tu.unidad AS unidad,
-                COUNT(*) AS total_resueltos
-            FROM ticket_movimiento m
-            JOIN ticket t ON t.ticket_id = m.ticket_id
-            JOIN tipo_unidad tu ON tu.unidad_id = t.unidad_id
-            WHERE m.movimiento_id = 5
-            GROUP BY mes, tu.unidad
-            ORDER BY MONTH(m.fecha);`
-        );
-
-        const resultMap: Record<string, any> = {};
-
-        for (const row of rows) {
-            const mes = row.mes;
-
-            if (!resultMap[mes]) {
-                resultMap[mes] = {
-                    mes,
-                    soporte: 0,
-                    desarrollo: 0,
-                    infraestructura: 0
-                };
-            }
-
-            const unidadLower = row.unidad.toLowerCase();
-
-            if (unidadLower === "soporte") resultMap[mes].soporte = row.total_resueltos;
-            if (unidadLower === "desarrollo") resultMap[mes].desarrollo = row.total_resueltos;
-            if (unidadLower === "infraestructura") resultMap[mes].infraestructura = row.total_resueltos;
-        }
-
-        return Object.values(resultMap);
-    },
-
-    getMTTRComparisonByUnit: async () => {
-        const [rows] = await pool.query<RowDataPacket[]>(
-            `SELECT
-                tu.unidad,
-                ROUND(AVG(TIMESTAMPDIFF(HOUR, creado.fecha, cerrado.fecha)), 2) AS promedio_horas
-            FROM ticket_movimiento creado
-            JOIN ticket_movimiento cerrado
-                ON creado.ticket_id = cerrado.ticket_id
-            JOIN ticket t ON t.ticket_id = creado.ticket_id
-            JOIN tipo_unidad tu ON tu.unidad_id = t.unidad_id
-            WHERE creado.movimiento_id = 1
-            AND cerrado.movimiento_id = 5
-            GROUP BY tu.unidad;`
-        );
-        return rows;
-    },
-    getMTTRByPriority: async () => {
-        const [rows] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                tp.prioridad,
-                ROUND(AVG(TIMESTAMPDIFF(HOUR, creado.fecha, cerrado.fecha)), 2) AS mttr_horas
-            FROM ticket_movimiento creado
-            JOIN ticket_movimiento cerrado 
-                ON creado.ticket_id = cerrado.ticket_id
-            JOIN ticket t ON t.ticket_id = creado.ticket_id
-            JOIN tipo_prioridad tp ON tp.prioridad_id = t.prioridad_id
-            WHERE creado.movimiento_id = 1
-            AND cerrado.movimiento_id = 5
-            GROUP BY tp.prioridad_id;`
-        );
-        return rows;
-    },
-    getSupportFullPerformance: async () => {
-        const [rows] = await pool.query<RowDataPacket[]>(
-            `SELECT
-                u.usuario_id AS id,
-                u.nombre_completo AS nombre,
-                tu.unidad,
-                -- tickets resueltos
-                (SELECT COUNT(*)
-                FROM ticket_movimiento m
-                WHERE m.movimiento_id = 5
-                AND m.usuario_id = u.usuario_id) AS tickets_resueltos,
-                (SELECT COUNT(*)
-                FROM ticket_detalle td
-                WHERE td.soporte_asignado = u.usuario_id) AS asignados_actuales,
-                ROUND(
-                    (
-                        (SELECT COUNT(*) FROM ticket_movimiento m WHERE m.movimiento_id = 5 AND m.usuario_id = u.usuario_id)
-                        /
-                        NULLIF(
-                            (SELECT COUNT(*) FROM ticket_detalle td WHERE td.soporte_asignado = u.usuario_id)
-                            ,0
-                        )
-                    ) * 100, 0
-                ) AS eficacia
-            FROM usuario u
-            JOIN tipo_unidad tu ON tu.unidad_id = u.unidad_id
-            WHERE u.rol_id = 2;`
-        );
-        return rows;
     },
     getLocationTreemap: async () => {
         const [rows] = await pool.query<RowDataPacket[]>(
@@ -438,18 +80,305 @@ export const kpiService = {
             name: area,
             data
         }));
+    },
+    getResolvedTicketsByMonth: async () => {
+        const [rows] = await pool.query<RowDataPacket[]>(
+            `SELECT 
+                MONTHNAME(m.fecha) AS mes,
+                COUNT(*) AS resueltos
+            FROM ticket_movimiento m
+            WHERE m.movimiento_id = 5
+            AND YEAR(m.fecha) = YEAR(CURDATE()) -- IMPORTANTE: Solo año actual
+            GROUP BY MONTH(m.fecha), MONTHNAME(m.fecha) -- Agrupamos por ambos para evitar error estricto
+            ORDER BY MONTH(m.fecha);`
+        );
+        return rows;
+    },
+    getMTTRByMonth: async () => {
+        const [rows] = await pool.query<RowDataPacket[]>(
+            `
+            SELECT
+                YEAR(tc.fecha_cierre)  AS year,
+                MONTH(tc.fecha_cierre) AS month,
+                DATE_FORMAT(tc.fecha_cierre, '%M') AS mes,
+                ROUND(
+                    AVG(TIMESTAMPDIFF(MINUTE, tcrea.fecha_creacion, tc.fecha_cierre)) / 60,
+                    2
+                ) AS mttr_horas
+            FROM (
+                SELECT ticket_id, MIN(fecha) AS fecha_creacion
+                FROM ticket_movimiento
+                WHERE movimiento_id = 1
+                GROUP BY ticket_id
+            ) AS tcrea
+            JOIN (
+                SELECT ticket_id, MAX(fecha) AS fecha_cierre
+                FROM ticket_movimiento
+                WHERE movimiento_id = 5
+                GROUP BY ticket_id
+            ) AS tc
+            ON tcrea.ticket_id = tc.ticket_id
+            GROUP BY year, month, mes
+            ORDER BY year, month;
+            `
+        );
+        return rows;
+    },
+    getSLAComplianceGlobal: async () => {
+        const [rows] = await pool.query<RowDataPacket[]>(`
+        SELECT
+            ROUND(
+                SUM(
+                    CASE 
+                        WHEN 
+                            (TIMESTAMPDIFF(MINUTE, creado.fecha_creacion, cerrado.fecha_cierre) / 60)
+                                <=
+                                CASE t.prioridad_id
+                                    WHEN 1 THEN 1   -- Alta
+                                    WHEN 2 THEN 2   -- Media
+                                    WHEN 3 THEN 3   -- Baja
+                                END
+                        THEN 1 ELSE 0
+                    END
+                ) * 100 / COUNT(*),
+            2) AS cumplimiento_sla
+        FROM (
+            SELECT ticket_id, MIN(fecha) AS fecha_creacion
+            FROM ticket_movimiento
+            WHERE movimiento_id = 1
+            GROUP BY ticket_id
+        ) creado
+        JOIN (
+            SELECT ticket_id, MAX(fecha) AS fecha_cierre
+            FROM ticket_movimiento
+            WHERE movimiento_id = 5
+            GROUP BY ticket_id
+        ) cerrado ON creado.ticket_id = cerrado.ticket_id
+        JOIN ticket t ON t.ticket_id = creado.ticket_id;
+    `);
+        return rows[0];
+    },
+    getSLAComplianceByPriority: async () => {
+        const [rows] = await pool.query<RowDataPacket[]>(`
+        SELECT
+            tp.prioridad,
+            ROUND(
+                SUM(
+                    CASE 
+                        WHEN 
+                            (TIMESTAMPDIFF(MINUTE, creado.fecha_creacion, cerrado.fecha_cierre) / 60)
+                                <=
+                                CASE t.prioridad_id
+                                    WHEN 1 THEN 1
+                                    WHEN 2 THEN 2
+                                    WHEN 3 THEN 3
+                                END
+                        THEN 1 ELSE 0
+                    END
+                ) * 100 / COUNT(*),
+            2) AS cumplimiento_sla
+        FROM (
+            SELECT ticket_id, MIN(fecha) AS fecha_creacion
+            FROM ticket_movimiento
+            WHERE movimiento_id = 1
+            GROUP BY ticket_id
+        ) creado
+        JOIN (
+            SELECT ticket_id, MAX(fecha) AS fecha_cierre
+            FROM ticket_movimiento
+            WHERE movimiento_id = 5
+            GROUP BY ticket_id
+        ) cerrado ON creado.ticket_id = cerrado.ticket_id
+        JOIN ticket t ON t.ticket_id = creado.ticket_id
+        JOIN tipo_prioridad tp ON tp.prioridad_id = t.prioridad_id
+        GROUP BY tp.prioridad_id
+        ORDER BY tp.prioridad_id;
+    `);
+
+        return rows;
+    },
+    getMTTRByPriority: async () => {
+        const [rows] = await pool.query<RowDataPacket[]>(`
+        SELECT
+            tp.prioridad,
+            ROUND(AVG(TIMESTAMPDIFF(MINUTE, creado.fecha_creacion, cerrado.fecha_cierre)) / 60, 2) AS mttr_horas
+        FROM (
+            SELECT ticket_id, MIN(fecha) AS fecha_creacion
+            FROM ticket_movimiento
+            WHERE movimiento_id = 1
+            GROUP BY ticket_id
+        ) creado
+        JOIN (
+            SELECT ticket_id, MAX(fecha) AS fecha_cierre
+            FROM ticket_movimiento
+            WHERE movimiento_id = 5
+            GROUP BY ticket_id
+        ) cerrado ON creado.ticket_id = cerrado.ticket_id
+        JOIN ticket t ON t.ticket_id = creado.ticket_id
+        JOIN tipo_prioridad tp ON tp.prioridad_id = t.prioridad_id
+        GROUP BY tp.prioridad_id
+        ORDER BY tp.prioridad_id;
+    `);
+
+        return rows;
+    },
+    // HASTA AQUI LA VISTA GENERAL
+
+    getUnidadesMes: async (year: number, month: number) => {
+        // A) Obtenemos TODAS las unidades primero para asegurar la estructura
+        const [unidades] = await pool.query<RowDataPacket[]>(`
+            SELECT unidad_id, unidad FROM tipo_unidad
+        `);
+
+        // B) Miembros por unidad
+        const [miembros] = await pool.query<RowDataPacket[]>(`
+            SELECT unidad_id, COUNT(usuario_id) as total 
+            FROM usuario 
+            WHERE activo = 1 
+            GROUP BY unidad_id
+        `);
+
+        // C) Pendientes (Estado Actual = 1)
+        const [pendientes] = await pool.query<RowDataPacket[]>(`
+            SELECT unidad_id, COUNT(*) AS total
+            FROM ticket
+            WHERE estado_id = 1
+            GROUP BY unidad_id
+        `);
+
+        // D) En Proceso (Estado Actual = 2)
+        const [enProceso] = await pool.query<RowDataPacket[]>(`
+            SELECT unidad_id, COUNT(*) AS total
+            FROM ticket
+            WHERE estado_id = 2
+            GROUP BY unidad_id
+        `);
+
+        // E) Cerrados en el mes seleccionado (Movimiento = 5 en fecha X)
+        const [cerrados] = await pool.query<RowDataPacket[]>(`
+            SELECT 
+                t.unidad_id,
+                COUNT(tm.ticket_id) AS total
+            FROM ticket_movimiento tm
+            JOIN ticket t ON t.ticket_id = tm.ticket_id
+            WHERE tm.movimiento_id = 5 
+                AND YEAR(tm.fecha) = ? 
+                AND MONTH(tm.fecha) = ?
+            GROUP BY t.unidad_id
+        `, [year, month]);
+
+        // F) MTTR Mensual (Tiempo promedio de resolución en horas)
+        // Calculamos la diferencia entre CREACION (1) y CIERRE (5)
+        const [mttr] = await pool.query<RowDataPacket[]>(`
+            SELECT 
+                t.unidad_id,
+                ROUND(AVG(TIMESTAMPDIFF(MINUTE, inicio.fecha, fin.fecha)) / 60, 2) as horas_promedio
+            FROM ticket t
+            -- Join para fecha de inicio (ticket creado)
+            JOIN ticket_movimiento inicio ON t.ticket_id = inicio.ticket_id AND inicio.movimiento_id = 1
+            -- Join para fecha de fin (ticket cerrado) dentro del mes seleccionado
+            JOIN ticket_movimiento fin ON t.ticket_id = fin.ticket_id AND fin.movimiento_id = 5
+            WHERE YEAR(fin.fecha) = ? AND MONTH(fin.fecha) = ?
+            GROUP BY t.unidad_id
+        `, [year, month]);
+
+        // G) UNIFICACIÓN DE DATOS
+        const data = unidades.map(u => {
+            const m = miembros.find(x => x.unidad_id === u.unidad_id);
+            const p = pendientes.find(x => x.unidad_id === u.unidad_id);
+            const ep = enProceso.find(x => x.unidad_id === u.unidad_id);
+            const c = cerrados.find(x => x.unidad_id === u.unidad_id);
+            const mt = mttr.find(x => x.unidad_id === u.unidad_id);
+
+            return {
+                unidad_id: u.unidad_id,
+                unidad: u.unidad,
+                miembros: m?.total || 0,
+                pendientes: p?.total || 0,
+                en_proceso: ep?.total || 0,
+                cerrados: c?.total || 0,
+                mttr_mensual: Number(mt?.horas_promedio || 0)
+            };
+        });
+
+        return data;
+    },
+    getUnidadesAnual: async (year: number) => {
+
+        // 1. Cerrados por Unidad agrupado por Mes
+        const [cerrados] = await pool.query<RowDataPacket[]>(`
+            SELECT 
+                t.unidad_id,
+                tu.unidad,
+                COUNT(tm.ticket_id) AS cerrados
+            FROM ticket_movimiento tm
+            JOIN ticket t ON t.ticket_id = tm.ticket_id
+            JOIN tipo_unidad tu ON t.unidad_id = tu.unidad_id
+            WHERE tm.movimiento_id = 5 
+                AND YEAR(tm.fecha) = ?
+            GROUP BY t.unidad_id, tu.unidad
+        `, [year]);
+
+        // 2. MTTR Promedio ANUAL por unidad
+        const [mttr] = await pool.query<RowDataPacket[]>(`
+            SELECT 
+                t.unidad_id,
+                ROUND(AVG(TIMESTAMPDIFF(MINUTE, inicio.fecha, fin.fecha)) / 60, 2) as mttr_mensual
+            FROM ticket t
+            JOIN ticket_movimiento inicio ON t.ticket_id = inicio.ticket_id AND inicio.movimiento_id = 1
+            JOIN ticket_movimiento fin ON t.ticket_id = fin.ticket_id AND fin.movimiento_id = 5
+            WHERE YEAR(fin.fecha) = ?
+            GROUP BY t.unidad_id
+        `, [year]);
+
+        return {
+            cerrados, // Array con: { unidad_id, unidad, cerrados }
+            mttr      // Array con: { unidad_id, mttr_mensual }
+        };
+    },
+    getAvailableYears: async () => {
+        const [rows] = await pool.query<RowDataPacket[]>(`
+        SELECT DISTINCT YEAR(fecha) AS year
+        FROM ticket_movimiento
+        WHERE movimiento_id = 1
+        ORDER BY year DESC;
+    `);
+
+        return rows.map(r => r.year);
+    },
+    // HASTA AQUI KPIS GENERALES POR UNIDAD
+
+    getRendimientoEquipo: async (year: number, month: number) => {
+        const [tecnicos] = await pool.query<RowDataPacket[]>(`
+        SELECT 
+            u.usuario_id,
+            u.nombre_completo,
+            tu.unidad,
+            
+            -- 1. OUTPUT: Tickets Resueltos en el mes (Movimiento = 5 'Cerrado')
+            (SELECT COUNT(DISTINCT tm.ticket_id) 
+            FROM ticket_movimiento tm 
+            WHERE tm.usuario_id = u.usuario_id 
+                AND tm.movimiento_id = 5
+                AND YEAR(tm.fecha) = ? 
+                AND MONTH(tm.fecha) = ?) AS tickets_resueltos,
+
+            -- 2. INPUT: Tickets Asignados en ese mismo mes (Movimiento = 3 'Asignado' o 14 'Reasignado')
+            -- Esto nos dice cuánto trabajo recibió el técnico en ese periodo específico
+            (SELECT COUNT(DISTINCT tm.ticket_id) 
+            FROM ticket_movimiento tm 
+            WHERE tm.usuario_id = u.usuario_id 
+                AND tm.movimiento_id IN (3, 14) 
+                AND YEAR(tm.fecha) = ? 
+                AND MONTH(tm.fecha) = ?) AS tickets_asignados_mes
+
+        FROM usuario u
+        JOIN tipo_unidad tu ON u.unidad_id = tu.unidad_id
+        WHERE u.rol_id IN (2, 3) AND u.activo = 1
+        ORDER BY tu.unidad, u.nombre_completo;
+    `, [year, month, year, month]); // Pasamos los parámetros 4 veces (2 para cada subquery)
+
+        return tecnicos;
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
+    // hasta aqui rendimineto por unidad 
 }

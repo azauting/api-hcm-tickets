@@ -3,8 +3,6 @@ import { kpiService } from "./kpis.service";
 import { sendResponse } from "../../utils/helper";
 
 export const kpiController = {
-
-    // todo: KPIs DEL DÍA
     getTicketsCreatedToday: async (req: Request, res: Response) => {
         try {
             const total = await kpiService.getTicketCreatedToday();
@@ -37,97 +35,12 @@ export const kpiController = {
             return sendResponse(res, 500, "Error al obtener los tickets en proceso");
         }
     },
-    // todo: KPIs POR UNIDAD
-    getTicketsCreatedTodayByUnit: async (req: Request, res: Response) => {
+    getLocationTreemap: async (req: Request, res: Response) => {
         try {
-            const data = await kpiService.getTicketsCreatedTodayByUnit();
-            return sendResponse(res, 200, "Tickets creados hoy por unidad obtenidos correctamente", data);
+            const data = await kpiService.getLocationTreemap();
+            return sendResponse(res, 200, "Treemap de ubicaciones obtenido correctamente", data);
         } catch (error) {
-            return sendResponse(res, 500, "Error al obtener tickets creados por unidad");
-        }
-    },
-    getTicketsThisMonthByUnit: async (req: Request, res: Response) => {
-        try {
-            const data = await kpiService.getTicketsThisMonthByUnit();
-            return sendResponse(res, 200, "Tickets del mes por unidad obtenidos correctamente", data);
-        } catch (error) {
-            return sendResponse(res, 500, "Error al obtener tickets del mes por unidad");
-        }
-    },
-    getMTTRByUnit: async (req: Request, res: Response) => {
-        try {
-            const data = await kpiService.getMTTRByUnit();
-            return sendResponse(res, 200, "MTTR por unidad obtenido correctamente", data);
-        } catch (error) {
-            return sendResponse(res, 500, "Error al obtener MTTR por unidad");
-        }
-    },
-    getClosedTicketsByUnit: async (req: Request, res: Response) => {
-        try {
-            const data = await kpiService.getClosedTicketsByUnit();
-            return sendResponse(res, 200, "Tickets cerrados por unidad obtenidos correctamente", data);
-        } catch (error) {
-            return sendResponse(res, 500, "Error al obtener tickets cerrados por unidad");
-        }
-    },
-    getOpenTicketsByUnit: async (req: Request, res: Response) => {
-        try {
-            const data = await kpiService.getOpenTicketsByUnit();
-            return sendResponse(res, 200, "Tickets abiertos por unidad obtenidos correctamente", data);
-        } catch (error) {
-            return sendResponse(res, 500, "Error al obtener tickets abiertos por unidad");
-        }
-    },
-    getTicketsInProgressByUnit: async (req: Request, res: Response) => {
-        try {
-            const data = await kpiService.getTicketsInProgressByUnit();
-            return sendResponse(res, 200, "Tickets en proceso por unidad obtenidos correctamente", data);
-        } catch (error) {
-            return sendResponse(res, 500, "Error al obtener tickets en proceso por unidad");
-        }
-    },
-
-    //  todo: DESEMPEÑO DE SOPORTE
-    getSupportPerformance: async (req: Request, res: Response) => {
-        try {
-            const data = await kpiService.getSupportPerformance();
-            return sendResponse(res, 200, "Desempeño del soporte obtenido correctamente", data);
-        } catch (error) {
-            return sendResponse(res, 500, "Error al obtener el desempeño del soporte");
-        }
-    },
-
-    // todo :  SERIES DE TIEMPO (día, semana, mes, año)
-    getTicketsByDay: async (req: Request, res: Response) => {
-        try {
-            const data = await kpiService.getTicketsByDay();
-            return sendResponse(res, 200, "Tickets por día obtenidos correctamente", data);
-        } catch (error) {
-            return sendResponse(res, 500, "Error al obtener tickets por día");
-        }
-    },
-    getTicketsByWeek: async (req: Request, res: Response) => {
-        try {
-            const data = await kpiService.getTicketsByWeek();
-            return sendResponse(res, 200, "Tickets por semana obtenidos correctamente", data);
-        } catch (error) {
-            return sendResponse(res, 500, "Error al obtener tickets por semana");
-        }
-    },
-    getTicketsByMonth: async (req: Request, res: Response) => {
-        try {
-            const data = await kpiService.getTicketsByMonth();
-            return sendResponse(res, 200, "Tickets por mes obtenidos correctamente", data);
-        } catch (error) {
-            return sendResponse(res, 500, "Error al obtener tickets por mes");
-        }
-    },
-    getTicketsByYear: async (req: Request, res: Response) => {
-        try {
-            const data = await kpiService.getTicketsByYear();
-            return sendResponse(res, 200, "Tickets por año obtenidos correctamente", data);
-        } catch (error) {
-            return sendResponse(res, 500, "Error al obtener tickets por año");
+            return sendResponse(res, 500, "Error al obtener treemap de ubicaciones");
         }
     },
     getResolvedTicketsByMonth: async (req: Request, res: Response) => {
@@ -146,52 +59,100 @@ export const kpiController = {
             return sendResponse(res, 500, "Error al obtener MTTR mensual");
         }
     },
-    getUnitConsolidatedStats: async (req: Request, res: Response) => {
+    getSLAByPriority: async (req: Request, res: Response) => {
         try {
-            const data = await kpiService.getUnitConsolidatedStats();
-            return sendResponse(res, 200, "Estadísticas consolidadas por unidad obtenidas correctamente", data);
-        } catch (error) {
-            return sendResponse(res, 500, "Error al obtener estadísticas por unidad");
+            const cumplimientoGlobal = await kpiService.getSLAComplianceGlobal();
+            const cumplimientoPorPrioridad = await kpiService.getSLAComplianceByPriority();
+            const mttrPorPrioridad = await kpiService.getMTTRByPriority();
+
+            return res.json({
+                success: true,
+                message: "SLA obtenido correctamente",
+                data: {
+                    cumplimiento_global: cumplimientoGlobal.cumplimiento_sla,
+                    prioridades: cumplimientoPorPrioridad.map((p, index) => ({
+                        prioridad: p.prioridad,
+                        cumplimiento_sla: p.cumplimiento_sla,
+                        mttr_horas: mttrPorPrioridad[index]?.mttr_horas ?? null,
+                        meta: index === 0 ? 1 : index === 1 ? 2 : 3 // Alta=1h, Media=2h, Baja=3h
+                    }))
+                }
+            });
+
+        } catch (err) {
+            console.error("Error en KPI SLA:", err);
+            return res.status(500).json({
+                success: false,
+                message: "Error obteniendo SLA",
+                error: err
+            });
         }
     },
-    getMonthlyResolvedTicketsByUnit: async (req: Request, res: Response) => {
+    // HASTA AQUI VISTA GENERAL
+
+    getUnidadesMes: async (req: Request, res: Response) => {
         try {
-            const data = await kpiService.getMonthlyResolvedTicketsByUnit();
-            return sendResponse(res, 200, "Tickets resueltos por unidad (mensual) obtenidos correctamente", data);
+            const year = parseInt(req.query.year as string);
+            const month = parseInt(req.query.month as string);
+
+            const data = await kpiService.getUnidadesMes(year, month);
+
+            return res.json({
+                success: true,
+                data
+            });
         } catch (error) {
-            return sendResponse(res, 500, "Error", "Error al obtener tickets resueltos mensuales por unidad");
+            console.error("Error en unidades mensual:", error);
+            return res.status(500).json({ success: false, message: "Error obteniendo datos mensuales" });
         }
     },
-    getMTTRComparisonByUnit: async (req: Request, res: Response) => {
+    getUnidadesAnual: async (req: Request, res: Response) => {
         try {
-            const data = await kpiService.getMTTRComparisonByUnit();
-            return sendResponse(res, 200, "Comparativa MTTR por unidad obtenida correctamente", data);
+            const year = parseInt(req.query.year as string);
+
+            const data = await kpiService.getUnidadesAnual(year);
+
+            return res.json({
+                success: true,
+                data
+            });
         } catch (error) {
-            return sendResponse(res, 500, "Error al obtener comparativa de MTTR");
+            console.error("Error en unidades anual:", error);
+            return res.status(500).json({ success: false, message: "Error obteniendo datos anuales" });
         }
     },
-    getMTTRByPriority: async (req: Request, res: Response) => {
+    getAvailableYears: async (req: Request, res: Response) => {
         try {
-            const data = await kpiService.getMTTRByPriority();
-            return sendResponse(res, 200, "MTTR por prioridad obtenido correctamente", data);
+            const years = await kpiService.getAvailableYears();
+
+            return res.json({
+                success: true,
+                data: years
+            });
         } catch (error) {
-            return sendResponse(res, 500, "Error al obtener MTTR por prioridad");
+            console.error("Error obteniendo años disponibles:", error);
+            return res.status(500).json({
+                success: false,
+                message: "Error obteniendo años"
+            });
         }
     },
-    getSupportFullPerformance: async (req: Request, res: Response) => {
+
+    // hasta aqui vista por unidad
+
+    getRendimientoEquipo: async (req: Request, res: Response) => {
         try {
-            const data = await kpiService.getSupportFullPerformance();
-            return sendResponse(res, 200, "Rendimiento individual obtenido correctamente", data);
+            const year = parseInt(req.query.year as string);
+            const month = parseInt(req.query.month as string);
+            const data = await kpiService.getRendimientoEquipo(year, month);
+
+            return res.json({
+                success: true,
+                data
+            });
         } catch (error) {
-            return sendResponse(res, 500, "Error al obtener rendimiento individual");
+            console.error("Error en rendimiento de equipo:", error);
+            return res.status(500).json({ success: false, message: "Error obteniendo rendimiento de equipo" });
         }
-    },
-    getLocationTreemap: async (req: Request, res: Response) => {
-        try {
-            const data = await kpiService.getLocationTreemap();
-            return sendResponse(res, 200, "Treemap de ubicaciones obtenido correctamente", data);
-        } catch (error) {
-            return sendResponse(res, 500, "Error al obtener treemap de ubicaciones");
-        }
-    },
+    }
 };
