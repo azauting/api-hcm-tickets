@@ -5,6 +5,7 @@ import { SignJWT } from 'jose';
 import type { RowDataPacket } from 'mysql2';
 import type { UserWithRole, JWTPayload } from '../../utils/interfaces';
 import type { Credentials, VerifyResult } from '../../utils/types';
+import mysql from 'mysql2/promise';
 
 const log = logger.child({ ubicacion: 'authService' });
 
@@ -111,4 +112,49 @@ export const AuthService = {
             .setExpirationTime(getJwtExpiresIn())
             .sign(JWT_SECRET);
     },
+    async createUser(payload: { nombre_completo: string; correo: string; contrasena: string; rol_id: number; unidad_id?: number | null; activo: number }): Promise<UserWithRole> {
+        log.info({ correo: payload.correo }, 'Creando nuevo usuario');
+
+        const hashedPassword = await bcrypt.hash(payload.contrasena, 10);
+
+        const [result] = await pool.query<mysql.ResultSetHeader>(
+            `INSERT INTO usuario (nombre_completo, correo, contrasena, rol_id, unidad_id, activo)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+            [
+                payload.nombre_completo,
+                payload.correo,
+                hashedPassword,
+                payload.rol_id,
+                payload.unidad_id ?? null,
+                payload.activo
+            ]
+        );
+
+        const newUserId = result.insertId;
+
+        const [rows] = await pool.query<(UserWithRole & RowDataPacket)[]>(
+            `SELECT 
+                u.usuario_id,
+                u.nombre_completo,
+                u.correo,
+                r.nombre_rol AS nombre_rol,
+                tu.unidad AS unidad
+            FROM usuario u
+            INNER JOIN tipo_rol r ON u.rol_id = r.rol_id
+            LEFT JOIN tipo_unidad tu ON u.unidad_id = tu.unidad_id
+            WHERE u.usuario_id = ?`,
+            [newUserId]
+        );
+
+        const createdUser = rows[0];
+
+        if (!createdUser) {
+            throw new Error('No se pudo recuperar el usuario recién creado');
+        }
+
+        log.info({ usuario_id: createdUser.usuario_id }, 'Usuario creado exitosamente');
+
+        return createdUser;
+    }
+
 };
