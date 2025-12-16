@@ -645,6 +645,40 @@ export const ticketController = {
         }
         return sendResponse(res, 200, 'Tickets cerrados obtenidos correctamente', { tickets: result.data });
     },
+    getClientIp: (req: Request, res: Response) => {
+        try {
+            // 1. Intentamos sacar la IP de los headers (por si hay proxys/nginx)
+            let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+
+            // 2. Si viene en formato array o lista, tomamos la primera
+            if (Array.isArray(ip)) {
+                ip = ip[0]!;
+            } else if (typeof ip === 'string' && ip.includes(',')) {
+                ip = ip.split(',')[0]!.trim();
+            }
+
+            // 3. Limpiamos el prefijo de IPv6 que pone Node a veces (::ffff:)
+            if (typeof ip === 'string' && ip.includes('::ffff:')) {
+                ip = ip.replace('::ffff:', '');
+            }
+
+            // 4. Si es localhost, a veces sale ::1
+            if (ip === '::1') {
+                ip = '127.0.0.1 (Localhost)';
+            }
+
+            return res.json({
+                success: true,
+                ip: ip
+            });
+
+        } catch (error) {
+            return res.status(500).json({
+                success: false,
+                message: 'Error al detectar IP'
+            });
+        }
+    },
 }
 
 

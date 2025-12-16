@@ -5,6 +5,8 @@ import { checkRole } from '../../middlewares/checkRole';
 
 const router = express.Router();
 
+// ip// obtener ip
+router.get('/my-ip', ticketController.getClientIp);
 
 //============================================================
 //                      POST ROUTES
@@ -52,7 +54,7 @@ router.get('/tickets/sin-revisar', verifyToken, checkRole(['administrador']), ti
 router.get('/tickets/mis-tickets', verifyToken, ticketController.getTicketsByUserId);
 
 //  TODO: ruta para ver los tickets cerrados
-router.get('/tickets/cerrados', verifyToken, checkRole(['administrador']), ticketController.getClosedTickets);
+router.get('/tickets/cerrados', verifyToken, checkRole(['administrador', 'soporte']), ticketController.getClosedTickets);
 // TODO: ruta para ver los tickets por unidad - estado: ✅
 router.get('/tickets/revisados', verifyToken, checkRole(['administrador', 'soporte']), ticketController.getTicketsByUnit);
 
@@ -88,6 +90,7 @@ router.get('/tickets/:id/detalle/integrantes', verifyToken, ticketController.get
 
 // TODO: ruta para ver un ticket específico (devuelve ticket + detalle + observaciones + integrantes)
 router.get('/tickets/:id', verifyToken, ticketController.getTicketById);
+
 
 
 export default router;

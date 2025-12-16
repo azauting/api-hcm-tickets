@@ -990,11 +990,13 @@ export const ticketService = {
 
                     tor.origen   AS origen,
                     tev.evento   AS evento,
-                    tu.unidad    AS unidad
+                    tu.unidad    AS unidad,
+                    tes.estado AS estado
                 FROM ticket t
-                JOIN tipo_origen    tor ON t.origen_id   = tor.origen_id
-                JOIN tipo_evento    tev ON t.evento_id   = tev.evento_id
-                JOIN tipo_unidad    tu ON t.unidad_id    = tu.unidad_id
+                JOIN tipo_origen tor ON t.origen_id = tor.origen_id
+                JOIN tipo_evento tev ON t.evento_id = tev.evento_id
+                JOIN tipo_unidad tu ON t.unidad_id = tu.unidad_id
+                JOIN tipo_estado tes ON t.estado_id = tes.estado_id
                 WHERE t.estado_id = 5
                 ORDER BY fecha_creacion DESC;`
             )
