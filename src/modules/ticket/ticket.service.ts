@@ -195,10 +195,10 @@ export const ticketService = {
             // 2. Obtener fecha del primer movimiento (creación)
             const [movRows] = await pool.query<RowDataPacket[]>(
                 `SELECT fecha
-   FROM ticket_movimiento
-   WHERE ticket_id = ?
-   ORDER BY fecha ASC
-   LIMIT 1`,
+                    FROM ticket_movimiento
+                    WHERE ticket_id = ?
+                    ORDER BY fecha ASC
+                    LIMIT 1`,
                 [ticketId]
             );
 
