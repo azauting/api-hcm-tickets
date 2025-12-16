@@ -195,23 +195,21 @@ export const ticketService = {
             // 2. Obtener fecha del primer movimiento (creación)
             const [movRows] = await pool.query<RowDataPacket[]>(
                 `SELECT fecha
-                    FROM ticket_movimiento
-                    WHERE ticket_id = ?
-                    ORDER BY fecha ASC
-                    LIMIT 1`,
+   FROM ticket_movimiento
+   WHERE ticket_id = ?
+   ORDER BY fecha ASC
+   LIMIT 1`,
                 [ticketId]
             );
 
-            // Si no existe movimiento, no debería pasar, pero igual lo controlamos
-            if (!ticket.fecha_creacion) {
+            if (!movRows || movRows.length === 0) {
                 return {
                     status: "error",
                     message: "El ticket aún no tiene movimientos registrados"
                 };
             }
 
-            // Verificar tiempo (5 minutos)
-            const fechaCreacion = new Date(ticket.fecha_creacion);
+            const fechaCreacion = new Date(movRows[0]!.fecha);
             const ahora = new Date();
             const minutos = (ahora.getTime() - fechaCreacion.getTime()) / 1000 / 60;
 
@@ -221,6 +219,7 @@ export const ticketService = {
                     message: "Ya no puedes cancelar el ticket (pasaron más de 5 minutos)"
                 };
             }
+
 
             // 3. ELIMINAR MOVIMIENTOS
             await pool.query(`DELETE FROM ticket_movimiento WHERE ticket_id = ?`, [ticketId]);

@@ -190,7 +190,7 @@ export const ticketController = {
         if (result.status === 'error') {
             return sendResponse(res, 500, "Error al actualizar el ticket");
         }
-        
+
         for (const field of Object.keys(fieldsToUpdate)) {
             let movimiento_id: number | null = null;
             if (field === 'prioridad_id') {
@@ -253,7 +253,7 @@ export const ticketController = {
             movimiento_id: 8,
             usuario_id
         });
-        
+
 
 
         log.info({ ticketId }, 'Movimiento registrado de Ticket Asignacion')
@@ -314,14 +314,14 @@ export const ticketController = {
         const soporteId = usuario_id;
         try {
             const result = await ticketService.getAssignedTickets(soporteId);
-            
+
             if (result.status === 'empty') {
                 return sendResponse(res, 404, 'No tienes tickets asignados');
             }
             if (result.status === 'error') {
                 return sendResponse(res, 500, result.message);
             }
-            
+
             return sendResponse(res, 200, 'Tickets asignados obtenidos correctamente', { tickets: result.data });
         } catch (error) {
             log.error({ error }, 'Error al obtener tickets asignados');
@@ -391,8 +391,16 @@ export const ticketController = {
             return sendResponse(res, 400, "ID de ticket inválido para cancelación");
         }
 
+        // 🔹 1. Registrar movimiento ANTES de eliminar el ticket
+        await ticketLogController.createTicketLog({
+            ticket_id: ticketId,
+            movimiento_id: 11, // cancelación
+            usuario_id: userId
+        });
 
+        log.info({ ticketId, userId }, 'Movimiento de ticket registrado: cancelación');
 
+        // 🔹 2. Cancelar ticket (borra ticket y movimientos por cascade)
         const result = await ticketService.cancelTicket(ticketId, userId);
 
         // forbidden es para cuando el usuario no es el creador del ticket
@@ -407,16 +415,12 @@ export const ticketController = {
         if (result.status === 'error') {
             return sendResponse(res, 500, result.message || 'Error al cancelar ticket');
         }
+
         log.info({ ticketId, userId }, 'Ticket cancelado correctamente');
-        await ticketLogController.createTicketLog({
-            ticket_id: ticketId,
-            movimiento_id: 11,
-            usuario_id: userId
-        });
-        log.info({ ticketId, userId }, 'Movimiento de ticket registrado: cancelación');
 
         return sendResponse(res, 200, 'Ticket cancelado correctamente');
     },
+
     getTicketsByUserId: async (req: AuthRequest, res: Response) => {
 
         const userId = req.user!.id;
